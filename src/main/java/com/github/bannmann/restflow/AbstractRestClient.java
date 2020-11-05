@@ -1,4 +1,4 @@
-package de.bannmann.restflow;
+package com.github.bannmann.restflow;
 
 import java.io.InputStream;
 import java.lang.reflect.Type;
@@ -16,9 +16,9 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import com.github.bannmann.restflow.util.Types;
 import com.github.mizool.core.exception.InvalidBackendReplyException;
 import com.github.mizool.core.rest.errorhandling.HttpStatus;
-import de.bannmann.restflow.util.Types;
 
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)

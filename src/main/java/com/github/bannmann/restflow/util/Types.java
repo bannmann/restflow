@@ -1,4 +1,4 @@
-package de.bannmann.restflow.util;
+package com.github.bannmann.restflow.util;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
