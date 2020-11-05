@@ -1,4 +1,4 @@
-package de.bannmann.restflow;
+package com.github.bannmann.restflow;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
