@@ -10,7 +10,7 @@
 
     <groupId>com.github.bannmann.restflow</groupId>
     <artifactId>restflow</artifactId>
-    <version>0.2-SNAPSHOT</version>
+    <version>0.3-SNAPSHOT</version>
 
     <name>${project.groupId}:${project.artifactId}</name>
     <description>Fluent syntax for Java 11 HTTP Client with JSON-B support</description>
