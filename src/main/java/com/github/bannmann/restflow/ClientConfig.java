@@ -1,7 +1,8 @@
 package com.github.bannmann.restflow;
 
 import java.net.http.HttpClient;
-import java.time.Duration;
+import java.net.http.HttpResponse;
+import java.util.List;
 
 import javax.json.bind.Jsonb;
 
@@ -10,17 +11,19 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.With;
+import lombok.Singular;
+
+import net.jodah.failsafe.Policy;
 
 @Getter
-@Builder
+@Builder(toBuilder = true)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ClientConfig
 {
     private final @NonNull HttpClient httpClient;
 
-    @With
-    private final Duration timeout;
+    @Singular
+    private final List<Policy<HttpResponse<?>>> policies;
 
     private final @NonNull Jsonb jsonb;
 }

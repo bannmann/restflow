@@ -4,11 +4,10 @@ import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import lombok.AccessLevel;
@@ -19,6 +18,8 @@ import lombok.extern.slf4j.Slf4j;
 import com.github.bannmann.restflow.util.Types;
 import com.github.mizool.core.exception.InvalidBackendReplyException;
 import com.github.mizool.core.rest.errorhandling.HttpStatus;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.Policy;
 
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
@@ -62,7 +63,8 @@ abstract class AbstractRestClient
 
         public CompletableFuture<Void> execute()
         {
-            return new ConfigHandle<Void, Void>(request, HttpResponse.BodyHandlers.discarding(), v -> v).fetch();
+            // Note: we use ofString() handler because discarding() would also discard the body of an error response.
+            return new ConfigHandle<String, Void>(request, HttpResponse.BodyHandlers.ofString(), v -> null).fetch();
         }
     }
 
@@ -75,15 +77,15 @@ abstract class AbstractRestClient
 
         public CompletableFuture<R> fetch()
         {
-            return makeRequest(request, bodyHandler).thenApply(response -> rejectAllErrors(response, request))
-                .thenApply(HttpResponse::body)
+            return makeRequest(request, bodyHandler, response -> rejectAllErrors(response, request)).thenApply(
+                HttpResponse::body)
                 .thenApply(responseConverter);
         }
 
         public CompletableFuture<Optional<R>> tryFetch()
         {
-            return makeRequest(request, bodyHandler).thenApply(response -> rejectUnexpectedErrors(response, request))
-                .thenApply(AbstractRestClient.this::tryGetBody)
+            return makeRequest(request, bodyHandler, response -> rejectUnexpectedErrors(response, request)).thenApply(
+                AbstractRestClient.this::tryGetBody)
                 .thenApply(body -> body.map(responseConverter));
         }
     }
@@ -91,31 +93,27 @@ abstract class AbstractRestClient
     protected final @NonNull ClientConfig clientConfig;
 
     private <T> CompletableFuture<HttpResponse<T>> makeRequest(
-        HttpRequest request, HttpResponse.BodyHandler<T> bodyHandler)
+        HttpRequest request, HttpResponse.BodyHandler<T> bodyHandler, Consumer<HttpResponse<?>> errorHandler)
     {
-        return getFuture(request, bodyHandler).thenApply(response -> rejectUnexpectedErrors(response, request));
+        return getFuture(request, bodyHandler, errorHandler);
     }
 
-    private <T> HttpResponse<T> rejectUnexpectedErrors(HttpResponse<T> response, HttpRequest request)
+    private <T> void rejectUnexpectedErrors(HttpResponse<T> response, HttpRequest request)
     {
         int responseStatus = response.statusCode();
         if (isFailure(responseStatus) && responseStatus != HttpStatus.NOT_FOUND)
         {
             throw createException(response, request);
         }
-
-        return response;
     }
 
-    private <T> HttpResponse<T> rejectAllErrors(HttpResponse<T> response, HttpRequest request)
+    private <T> void rejectAllErrors(HttpResponse<T> response, HttpRequest request)
     {
         int responseStatus = response.statusCode();
         if (isFailure(responseStatus))
         {
             throw createException(response, request);
         }
-
-        return response;
     }
 
     private boolean isFailure(int responseStatus)
@@ -129,11 +127,27 @@ abstract class AbstractRestClient
     }
 
     private <T> CompletableFuture<HttpResponse<T>> getFuture(
-        HttpRequest request, HttpResponse.BodyHandler<T> bodyHandler)
+        HttpRequest request, HttpResponse.BodyHandler<T> bodyHandler, Consumer<HttpResponse<?>> errorHandler)
+    {
+        List<Policy<HttpResponse<?>>> policies = clientConfig.getPolicies();
+        if (!policies.isEmpty())
+        {
+            return Failsafe.with(policies)
+                .getStageAsync(context -> getSingleAttemptFuture(request, bodyHandler, errorHandler));
+        }
+
+        return getSingleAttemptFuture(request, bodyHandler, errorHandler);
+    }
+
+    private <T> CompletableFuture<HttpResponse<T>> getSingleAttemptFuture(
+        HttpRequest request, HttpResponse.BodyHandler<T> bodyHandler, Consumer<HttpResponse<?>> errorHandler)
     {
         var future = sendAsync(request, bodyHandler);
-        future = setTimeout(future);
         future = addDetailsToException(future, request);
+        future = future.thenApply(response -> {
+            errorHandler.accept(response);
+            return response;
+        });
 
         return future;
     }
@@ -143,16 +157,6 @@ abstract class AbstractRestClient
     {
         return clientConfig.getHttpClient()
             .sendAsync(request, bodyHandler);
-    }
-
-    private <T> CompletableFuture<T> setTimeout(CompletableFuture<T> future)
-    {
-        Duration timeout = clientConfig.getTimeout();
-        if (timeout != null)
-        {
-            return future.orTimeout(timeout.toNanos(), TimeUnit.NANOSECONDS);
-        }
-        return future;
     }
 
     private <T> CompletableFuture<T> addDetailsToException(CompletableFuture<T> future, HttpRequest request)
@@ -170,10 +174,19 @@ abstract class AbstractRestClient
     {
         return new InvalidBackendReplyException(String.format("Got status %d with message '%s' for URL %s",
             response.statusCode(),
-            response.body()
-                .toString()
-                .trim(),
+            getStringBody(response),
             request.uri()));
+    }
+
+    private <T> String getStringBody(HttpResponse<T> response)
+    {
+        T body = response.body();
+        if (body != null)
+        {
+            return body.toString()
+                .trim();
+        }
+        return null;
     }
 
     private <T> Optional<T> tryGetBody(HttpResponse<T> response)
