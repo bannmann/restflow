@@ -1,59 +1,61 @@
 package com.github.bannmann.restflow;
 
-import static java.net.http.HttpRequest.BodyPublishers.noBody;
+import static org.assertj.core.api.Assertions.as;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockserver.matchers.Times.once;
-import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
 import static org.mockserver.verify.VerificationTimes.exactly;
 
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.io.StringReader;
+import java.net.ConnectException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
+import javax.json.Json;
+import javax.json.JsonArray;
+import javax.json.JsonObject;
 import javax.json.bind.JsonbBuilder;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.mockserver.integration.ClientAndServer;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.github.mizool.core.exception.CodeInconsistencyException;
+import com.github.mizool.core.exception.InvalidBackendReplyException;
 import net.jodah.failsafe.RetryPolicy;
 import net.jodah.failsafe.Timeout;
 import net.jodah.failsafe.TimeoutExceededException;
 
 @Slf4j
-public class TestBasicRestClient
+public class TestBasicRestClient extends AbstractNameableTest
 {
+    private interface ReturnSpec<T>
+        extends Function<AbstractRestClient.RequestHandle, AbstractRestClient.ConfigHandle<String, T>>
+    {
+    }
+
     private static final int METHOD_TIMEOUT = 30 * 1000;
     private static final Duration REQUEST_TIMEOUT = Duration.ofMillis(200);
 
-    private static final int PORT = 1080;
-    private static final URL BASE_URL = makeUrl("http://localhost:" + PORT);
-
-    public static final String PATH = "/foo";
-
-    private static final HttpRequest OUTGOING_POST_REQUEST = createRequest(PATH).POST(noBody())
-        .build();
-
-    private static final org.mockserver.model.HttpRequest POST_REQUEST = request(PATH).withMethod("POST");
-    private static final org.mockserver.model.HttpResponse RESPONSE_NO_CONTENT = response().withStatusCode(204);
-    private static final org.mockserver.model.HttpResponse SERVER_BUSY_RESPONSE = response().withStatusCode(429)
-        .withBody("Please try again later")
-        .withDelay(TimeUnit.SECONDS, 5);
-
+    private static final Timeout<HttpResponse<?>> TIMEOUT_POLICY = Timeout.of(REQUEST_TIMEOUT);
     private static final RetryPolicy<HttpResponse<?>>
         RETRY_ONCE_POLICY
         = new RetryPolicy<HttpResponse<?>>().withMaxRetries(1);
-    private static final Timeout<HttpResponse<?>> TIMEOUT_POLICY = Timeout.of(REQUEST_TIMEOUT);
 
     private BasicRestClient makeClient()
     {
@@ -76,37 +78,7 @@ public class TestBasicRestClient
             .build();
     }
 
-    private static URL makeUrl(String spec)
-    {
-        try
-        {
-            return new URI(spec).toURL();
-        }
-        catch (URISyntaxException | MalformedURLException e)
-        {
-            throw new CodeInconsistencyException(e);
-        }
-    }
-
-    private static URI makeUriFromPath(String path)
-    {
-        try
-        {
-            return new URL(BASE_URL, path).toURI();
-        }
-        catch (URISyntaxException | MalformedURLException e)
-        {
-            throw new CodeInconsistencyException(e);
-        }
-    }
-
-    private static HttpRequest.Builder createRequest(String path)
-    {
-        return HttpRequest.newBuilder()
-            .uri(makeUriFromPath(path));
-    }
-
-    private final ClientAndServer mockedServer = new ClientAndServer(PORT);
+    private final ClientAndServer mockedServer = new ClientAndServer(TestData.PORT);
 
     @BeforeMethod
     public void setUp()
@@ -117,113 +89,307 @@ public class TestBasicRestClient
     @Test(timeOut = METHOD_TIMEOUT)
     public void testExecute() throws Exception
     {
-        mockedServer.when(POST_REQUEST)
-            .respond(RESPONSE_NO_CONTENT);
+        mockedServer.when(TestData.Requests.Incoming.POST)
+            .respond(TestData.Responses.NO_CONTENT);
 
         BasicRestClient client = makeClient();
-        client.make(OUTGOING_POST_REQUEST)
+        client.make(TestData.Requests.Outgoing.POST)
             .execute()
             .get();
 
-        mockedServer.verify(POST_REQUEST);
+        mockedServer.verify(TestData.Requests.Incoming.POST);
+    }
+
+    @Test(timeOut = METHOD_TIMEOUT)
+    public void testExecuteNowhere()
+    {
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(TestData.FAKE_SERVER_URL)
+            .build();
+        CompletableFuture<Void> responseFuture = makeClient().make(request)
+            .execute();
+
+        assertThatThrownBy(responseFuture::get).isExactlyInstanceOf(ExecutionException.class)
+            .extracting(Throwable::getCause, as(InstanceOfAssertFactories.THROWABLE))
+            .isExactlyInstanceOf(RequestFailureException.class)
+            .hasMessageContaining(TestData.FAKE_SERVER_URL.toString())
+            .hasRootCauseExactlyInstanceOf(ConnectException.class);
+    }
+
+    @Test(timeOut = METHOD_TIMEOUT)
+    public void testExecuteMissing()
+    {
+        CompletableFuture<Void> responseFuture = makeClient().make(TestData.Requests.Outgoing.POST_MISSING)
+            .execute();
+
+        assertThrowsInvalidBackendReply(responseFuture, 404, TestData.PATH_MISSING, "");
+    }
+
+    @Test(timeOut = METHOD_TIMEOUT)
+    public void testFetchMissing()
+    {
+        CompletableFuture<String> responseFuture = makeClient().make(TestData.Requests.Outgoing.POST_MISSING)
+            .returningString()
+            .fetch();
+
+        assertThrowsInvalidBackendReply(responseFuture, 404, TestData.PATH_MISSING, "");
+    }
+
+    @Test(timeOut = METHOD_TIMEOUT)
+    public void testTryFetchMissing() throws Exception
+    {
+        Optional<String> fakeRequestResponse = makeClient().make(TestData.Requests.Outgoing.POST_MISSING)
+            .returningString()
+            .tryFetch()
+            .get();
+
+        assertThat(fakeRequestResponse).isEmpty();
+    }
+
+    @Test(timeOut = METHOD_TIMEOUT)
+    public void testExecuteServerError()
+    {
+        mockedServer.when(TestData.Requests.Incoming.POST)
+            .respond(TestData.Responses.INTERNAL_SERVER_ERROR);
+
+        CompletableFuture<Void> responseFuture = makeClient().make(TestData.Requests.Outgoing.POST)
+            .execute();
+
+        assertThrowsInternalServerError(responseFuture);
+    }
+
+    @Test(timeOut = METHOD_TIMEOUT)
+    public void testFetchServerError()
+    {
+        mockedServer.when(TestData.Requests.Incoming.POST)
+            .respond(TestData.Responses.INTERNAL_SERVER_ERROR);
+
+        CompletableFuture<String> responseFuture = makeClient().make(TestData.Requests.Outgoing.POST)
+            .returningString()
+            .fetch();
+
+        assertThrowsInternalServerError(responseFuture);
+    }
+
+    @Test(timeOut = METHOD_TIMEOUT)
+    public void testTryFetchServerError()
+    {
+        mockedServer.when(TestData.Requests.Incoming.POST)
+            .respond(TestData.Responses.INTERNAL_SERVER_ERROR);
+
+        CompletableFuture<Optional<String>> responseFuture = makeClient().make(TestData.Requests.Outgoing.POST)
+            .returningString()
+            .tryFetch();
+
+        assertThrowsInternalServerError(responseFuture);
+    }
+
+    private void assertThrowsInternalServerError(CompletableFuture<?> responseFuture)
+    {
+        assertThrowsInvalidBackendReply(responseFuture,
+            500,
+            TestData.PATH,
+            TestData.Responses.Body.INTERNAL_SERVER_ERROR_BODY);
+    }
+
+    private void assertThrowsInvalidBackendReply(
+        CompletableFuture<?> responseFuture, int status, String path, String message)
+    {
+        InvalidBackendReplyException expectedCause = new InvalidBackendReplyException(String.format(
+            "Got status %d with message '%s' for URL %s%s",
+            status,
+            message,
+            TestData.BASE_URL,
+            path));
+
+        assertThatThrownBy(responseFuture::get).isExactlyInstanceOf(ExecutionException.class)
+            .hasCause(expectedCause);
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Greeting
+    {
+        private String greeting;
+    }
+
+    @DataProvider
+    public Object[][] getFetchTypeData()
+    {
+        return new Object[][]{
+            makeFetchDataParameters(TestData.Responses.HELLO_WORLD_OBJECT,
+                AbstractRestClient.RequestHandle::returningString,
+                TestData.Responses.Body.HELLO_WORLD_OBJECT,
+                "String"),
+
+            makeFetchDataParameters(TestData.Responses.HELLO_WORLD_OBJECT,
+                handle -> handle.returning(JsonObject.class),
+                Json.createReader(new StringReader(TestData.Responses.Body.HELLO_WORLD_OBJECT))
+                    .readObject(),
+                "JsonObject"),
+
+            makeFetchDataParameters(TestData.Responses.HELLO_WORLD_ARRAY,
+                handle -> handle.returning(JsonArray.class),
+                Json.createReader(new StringReader(TestData.Responses.Body.HELLO_WORLD_JSON_ARRAY))
+                    .readArray(),
+                "JsonArray"),
+
+            makeFetchDataParameters(TestData.Responses.HELLO_WORLD_OBJECT,
+                handle -> handle.returning(Greeting.class),
+                new Greeting("Hello, world!"),
+                "Greeting"),
+
+            makeFetchDataParameters(TestData.Responses.HELLO_WORLD_ARRAY,
+                handle -> handle.returningListOf(Greeting.class),
+                List.of(new Greeting("Hello, world!")),
+                "List of Greeting")
+        };
+    }
+
+    /**
+     * Enables type inference on data provider rows.
+     */
+    private <T> Object[] makeFetchDataParameters(
+        org.mockserver.model.HttpResponse mockResponse, ReturnSpec<T> returnSpec, T expectedResult, String remark)
+    {
+        return new Object[]{ mockResponse, returnSpec, expectedResult, remark };
+    }
+
+    @Test(timeOut = METHOD_TIMEOUT, dataProvider = "getFetchTypeData")
+    public <T> void testFetch(
+        org.mockserver.model.HttpResponse mockResponse,
+        ReturnSpec<T> returnSpec,
+        T expectedResult,
+        @UseAsTestName @SuppressWarnings("unused") String remark) throws Exception
+    {
+        T response = prepareFetchClientServer(mockResponse, returnSpec).fetch()
+            .get();
+
+        assertThat(response).isEqualTo(expectedResult);
+    }
+
+    @Test(timeOut = METHOD_TIMEOUT, dataProvider = "getFetchTypeData")
+    public <T> void testTryFetch(
+        org.mockserver.model.HttpResponse mockResponse,
+        ReturnSpec<T> returnSpec,
+        T expectedResult,
+        @UseAsTestName @SuppressWarnings("unused") String remark) throws Exception
+    {
+        Optional<T> response = prepareFetchClientServer(mockResponse, returnSpec).tryFetch()
+            .get();
+
+        assertThat(response).contains(expectedResult);
+    }
+
+    private <T> AbstractRestClient.ConfigHandle<String, T> prepareFetchClientServer(
+        org.mockserver.model.HttpResponse mockResponse, ReturnSpec<T> returnSpec)
+    {
+        mockedServer.when(TestData.Requests.Incoming.POST)
+            .respond(mockResponse);
+
+        BasicRestClient client = makeClient();
+        var requestHandle = client.make(TestData.Requests.Outgoing.POST);
+        return returnSpec.apply(requestHandle);
     }
 
     @Test(timeOut = METHOD_TIMEOUT)
     public void testTimeoutKept() throws Exception
     {
-        mockedServer.when(POST_REQUEST)
-            .respond(RESPONSE_NO_CONTENT.withDelay(TimeUnit.MILLISECONDS, 100));
+        mockedServer.when(TestData.Requests.Incoming.POST)
+            .respond(TestData.Responses.NO_CONTENT.withDelay(TimeUnit.MILLISECONDS, 100));
 
         ClientConfig clientConfig = makeClientConfig().toBuilder()
             .policy(TIMEOUT_POLICY)
             .build();
         BasicRestClient client = makeClient(clientConfig);
-        client.make(OUTGOING_POST_REQUEST)
+        client.make(TestData.Requests.Outgoing.POST)
             .execute()
             .get();
 
-        mockedServer.verify(POST_REQUEST);
+        mockedServer.verify(TestData.Requests.Incoming.POST);
     }
 
     @Test(timeOut = METHOD_TIMEOUT)
     public void testTimeoutExceeded()
     {
-        mockedServer.when(POST_REQUEST)
-            .respond(SERVER_BUSY_RESPONSE);
+        mockedServer.when(TestData.Requests.Incoming.POST)
+            .respond(TestData.Responses.SERVER_BUSY);
 
         ClientConfig clientConfig = makeClientConfig().toBuilder()
             .policy(TIMEOUT_POLICY)
             .build();
         BasicRestClient client = makeClient(clientConfig);
-        var future = client.make(OUTGOING_POST_REQUEST)
+        var future = client.make(TestData.Requests.Outgoing.POST)
             .execute();
 
         assertThatThrownBy(future::get).hasRootCauseInstanceOf(TimeoutExceededException.class);
 
-        mockedServer.verify(POST_REQUEST);
+        mockedServer.verify(TestData.Requests.Incoming.POST);
     }
 
     @Test(timeOut = METHOD_TIMEOUT)
     public void testRetryOnTimeout() throws Exception
     {
-        mockedServer.when(POST_REQUEST, once())
-            .respond(SERVER_BUSY_RESPONSE);
-        mockedServer.when(POST_REQUEST, once())
-            .respond(RESPONSE_NO_CONTENT);
+        mockedServer.when(TestData.Requests.Incoming.POST, once())
+            .respond(TestData.Responses.SERVER_BUSY);
+        mockedServer.when(TestData.Requests.Incoming.POST, once())
+            .respond(TestData.Responses.NO_CONTENT);
 
         ClientConfig clientConfig = makeClientConfig().toBuilder()
             .policy(RETRY_ONCE_POLICY)
             .policy(TIMEOUT_POLICY)
             .build();
         BasicRestClient client = makeClient(clientConfig);
-        client.make(OUTGOING_POST_REQUEST)
+        client.make(TestData.Requests.Outgoing.POST)
             .execute()
             .get();
 
-        mockedServer.verify(POST_REQUEST, exactly(2));
+        mockedServer.verify(TestData.Requests.Incoming.POST, exactly(2));
     }
 
     @Test(timeOut = METHOD_TIMEOUT)
     public void testRetryOnError() throws Exception
     {
-        mockedServer.when(POST_REQUEST, once())
-            .respond(response().withStatusCode(500)
-                .withBody("Detected a slight field variance in the thera-magnetic caesium portal housing."));
+        mockedServer.when(TestData.Requests.Incoming.POST, once())
+            .respond(TestData.Responses.INTERNAL_SERVER_ERROR);
 
-        mockedServer.when(POST_REQUEST, once())
-            .respond(RESPONSE_NO_CONTENT);
+        mockedServer.when(TestData.Requests.Incoming.POST, once())
+            .respond(TestData.Responses.NO_CONTENT);
 
         ClientConfig clientConfig = makeClientConfig().toBuilder()
             .policy(RETRY_ONCE_POLICY)
             .build();
         BasicRestClient client = makeClient(clientConfig);
-        client.make(OUTGOING_POST_REQUEST)
+        client.make(TestData.Requests.Outgoing.POST)
             .execute()
             .get();
 
-        mockedServer.verify(POST_REQUEST, exactly(2));
+        mockedServer.verify(TestData.Requests.Incoming.POST, exactly(2));
     }
 
     @Test(timeOut = METHOD_TIMEOUT)
     public void testExceptionDetails()
     {
-        mockedServer.when(POST_REQUEST)
+        mockedServer.when(TestData.Requests.Incoming.POST)
             .respond(response().withStatusCode(418)
                 .withBody("Incompatible equipment."));
 
         ClientConfig clientConfig = makeClientConfig();
         BasicRestClient client = makeClient(clientConfig);
 
-        var executeFuture = client.make(OUTGOING_POST_REQUEST)
+        var executeFuture = client.make(TestData.Requests.Outgoing.POST)
             .execute();
-        var fetchFuture = client.make(OUTGOING_POST_REQUEST)
+        var fetchFuture = client.make(TestData.Requests.Outgoing.POST)
             .returningString()
             .fetch();
-        var tryFetchFuture = client.make(OUTGOING_POST_REQUEST)
+        var tryFetchFuture = client.make(TestData.Requests.Outgoing.POST)
             .returningString()
             .tryFetch();
 
-        String expectedMessage = "Got status 418 with message 'Incompatible equipment.' for URL " + BASE_URL + PATH;
+        String expectedMessage = "Got status 418 with message 'Incompatible equipment.' for URL " +
+            TestData.BASE_URL +
+            TestData.PATH;
         assertThatThrownBy(executeFuture::get).hasRootCauseMessage(expectedMessage);
         assertThatThrownBy(fetchFuture::get).hasRootCauseMessage(expectedMessage);
         assertThatThrownBy(tryFetchFuture::get).hasRootCauseMessage(expectedMessage);

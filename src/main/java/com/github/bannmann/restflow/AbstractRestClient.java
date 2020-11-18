@@ -164,7 +164,7 @@ abstract class AbstractRestClient
         return future.handle((result, throwable) -> {
             if (throwable != null)
             {
-                throw new RuntimeException(String.format("Request to URL %s failed", request.uri()), throwable);
+                throw new RequestFailureException(String.format("Request to URL %s failed", request.uri()), throwable);
             }
             return result;
         });
