@@ -14,10 +14,8 @@ import lombok.Builder;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
-public final class StandardRestClient extends AbstractRestClient
+public final class StandardRestClient
 {
-    private static final String APPLICATION_JSON = "application/json";
-
     @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     public final class RequestBodyHandle
     {
@@ -39,6 +37,9 @@ public final class StandardRestClient extends AbstractRestClient
         }
     }
 
+    private static final String APPLICATION_JSON = "application/json";
+
+    private final ClientConfig clientConfig;
     private final HttpRequest.Builder requestTemplate;
     private final URL baseUrl;
 
@@ -46,12 +47,10 @@ public final class StandardRestClient extends AbstractRestClient
      * @throws IllegalStateException if no URI has been set on {@code requestTemplate}
      */
     @Builder
-    protected StandardRestClient(@NonNull ClientConfig clientConfig, @NonNull HttpRequest.Builder requestTemplate)
+    private StandardRestClient(@NonNull ClientConfig clientConfig, @NonNull HttpRequest.Builder requestTemplate)
     {
-        super(clientConfig);
-
+        this.clientConfig = clientConfig;
         this.requestTemplate = requestTemplate.copy();
-
         baseUrl = obtainBaseUrl(requestTemplate);
     }
 
@@ -88,7 +87,7 @@ public final class StandardRestClient extends AbstractRestClient
 
     private RequestHandle make(HttpRequest request)
     {
-        return new RequestHandle(request);
+        return new RequestHandle(request, clientConfig);
     }
 
     private HttpRequest createGetRequest(String resourcePath)

@@ -5,16 +5,13 @@ import java.net.http.HttpRequest;
 import lombok.Builder;
 import lombok.NonNull;
 
-public final class BasicRestClient extends AbstractRestClient
+@Builder
+public final class BasicRestClient
 {
-    @Builder
-    protected BasicRestClient(@NonNull ClientConfig clientConfig)
-    {
-        super(clientConfig);
-    }
+    private final @NonNull ClientConfig clientConfig;
 
     public RequestHandle make(HttpRequest request)
     {
-        return new RequestHandle(request);
+        return new RequestHandle(request, clientConfig);
     }
 }

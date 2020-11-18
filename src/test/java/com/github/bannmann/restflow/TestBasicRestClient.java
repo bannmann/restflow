@@ -44,8 +44,7 @@ import net.jodah.failsafe.TimeoutExceededException;
 @Slf4j
 public class TestBasicRestClient extends AbstractNameableTest
 {
-    private interface ReturnSpec<T>
-        extends Function<AbstractRestClient.RequestHandle, AbstractRestClient.ConfigHandle<String, T>>
+    private interface ReturnSpec<T> extends Function<RequestHandle, ConfigHandle<T>>
     {
     }
 
@@ -219,7 +218,7 @@ public class TestBasicRestClient extends AbstractNameableTest
     {
         return new Object[][]{
             makeFetchDataParameters(TestData.Responses.HELLO_WORLD_OBJECT,
-                AbstractRestClient.RequestHandle::returningString,
+                RequestHandle::returningString,
                 TestData.Responses.Body.HELLO_WORLD_OBJECT,
                 "String"),
 
@@ -282,7 +281,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         assertThat(response).contains(expectedResult);
     }
 
-    private <T> AbstractRestClient.ConfigHandle<String, T> prepareFetchClientServer(
+    private <T> ConfigHandle<T> prepareFetchClientServer(
         org.mockserver.model.HttpResponse mockResponse, ReturnSpec<T> returnSpec)
     {
         mockedServer.when(TestData.Requests.Incoming.POST)
