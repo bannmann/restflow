@@ -26,4 +26,7 @@ public final class ClientConfig
     private final List<Policy<HttpResponse<?>>> policies;
 
     private final @NonNull Jsonb jsonb;
+
+    @Singular
+    private final List<RequestCustomizer> requestCustomizers;
 }

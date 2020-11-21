@@ -181,21 +181,23 @@ class Requesters
         }
     }
 
-    public static <B, R> Requester<R> createRegular(
-        ClientConfig clientConfig, RequesterConfig<B, R> requesterConfig, HttpRequest request)
+    public static <B, R> Requester<R> createRegular(RequestSpecification<B, R> spec)
     {
-        return new RegularRequester<>(requesterConfig.getBodyHandler(),
-            request,
-            requesterConfig.getResponseConverter(),
-            clientConfig);
+        return new RegularRequester<>(spec.getResponseBodyConfig()
+            .getBodyHandler(),
+            spec.createFinalRequest(),
+            spec.getResponseBodyConfig()
+                .getResponseConverter(),
+            spec.getClientConfig());
     }
 
-    public static <B, R> Requester<Optional<R>> createOptional(
-        ClientConfig clientConfig, RequesterConfig<B, R> requesterConfig, HttpRequest request)
+    public static <B, R> Requester<Optional<R>> createOptional(RequestSpecification<B, R> spec)
     {
-        return new OptionalRequester<>(requesterConfig.getBodyHandler(),
-            request,
-            requesterConfig.getResponseConverter(),
-            clientConfig);
+        return new OptionalRequester<>(spec.getResponseBodyConfig()
+            .getBodyHandler(),
+            spec.createFinalRequest(),
+            spec.getResponseBodyConfig()
+                .getResponseConverter(),
+            spec.getClientConfig());
     }
 }

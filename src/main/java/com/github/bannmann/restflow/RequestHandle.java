@@ -5,7 +5,6 @@ import java.lang.reflect.Type;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -18,48 +17,49 @@ public final class RequestHandle
     private final HttpRequest request;
     private final ClientConfig clientConfig;
 
-    public <T> ConfigHandle<T> returning(Class<T> responseClass)
+    public <T> FetchHandle<T> returning(Class<T> responseClass)
     {
-        return new ConfigHandle<>(request,
-            new RequesterConfig<>(HttpResponse.BodyHandlers.ofString(),
-                s -> clientConfig.getJsonb()
-                    .fromJson(s, responseClass)),
-            clientConfig);
+        var responseBodyConfig = new ResponseBodyConfig<>(HttpResponse.BodyHandlers.ofString(),
+            s -> clientConfig.getJsonb()
+                .fromJson(s, responseClass));
+        var spec = new RequestSpecification<String, T>(request, responseBodyConfig, clientConfig);
+        return new FetchHandle<>(spec);
     }
 
-    public <T> ConfigHandle<T> returning(Type runtimeType)
+    public <T> FetchHandle<T> returning(Type runtimeType)
     {
-        return new ConfigHandle<>(request,
-            new RequesterConfig<>(HttpResponse.BodyHandlers.ofString(),
-                s -> clientConfig.getJsonb()
-                    .fromJson(s, runtimeType)),
-            clientConfig);
+        var responseBodyConfig = new ResponseBodyConfig<String, T>(HttpResponse.BodyHandlers.ofString(),
+            s -> clientConfig.getJsonb()
+                .fromJson(s, runtimeType));
+        var spec = new RequestSpecification<String, T>(request, responseBodyConfig, clientConfig);
+        return new FetchHandle<>(spec);
     }
 
-    public <T> ConfigHandle<List<T>> returningListOf(Class<T> elementClass)
+    public <T> FetchHandle<List<T>> returningListOf(Class<T> elementClass)
     {
         return returning(Types.listOf(elementClass));
     }
 
-    public ConfigHandle<String> returningString()
+    public FetchHandle<String> returningString()
     {
-        return new ConfigHandle<>(request,
-            new RequesterConfig<>(HttpResponse.BodyHandlers.ofString(), string -> string),
-            clientConfig);
+        var responseBodyConfig = new ResponseBodyConfig<>(HttpResponse.BodyHandlers.ofString(), string -> string);
+        var spec = new RequestSpecification<String, String>(request, responseBodyConfig, clientConfig);
+        return new FetchHandle<>(spec);
     }
 
-    public ConfigHandle<InputStream> returningInputStream()
+    public FetchHandle<InputStream> returningInputStream()
     {
-        return new ConfigHandle<>(request,
-            new RequesterConfig<>(HttpResponse.BodyHandlers.ofInputStream(), inputStream -> inputStream),
-            clientConfig);
+        var responseBodyConfig = new ResponseBodyConfig<>(HttpResponse.BodyHandlers.ofInputStream(),
+            inputStream -> inputStream);
+        var spec = new RequestSpecification<InputStream, InputStream>(request, responseBodyConfig, clientConfig);
+        return new FetchHandle<>(spec);
     }
 
-    public CompletableFuture<Void> execute()
+    public ExecuteHandle returningNothing()
     {
         // Note: we use ofString() handler because discarding() would also discard the body of an error response.
-        return new ConfigHandle<Void>(request,
-            new RequesterConfig<>(HttpResponse.BodyHandlers.ofString(), v -> null),
-            clientConfig).fetch();
+        var responseBodyConfig = new ResponseBodyConfig<String, Void>(HttpResponse.BodyHandlers.ofString(), v -> null);
+        var spec = new RequestSpecification<String, Void>(request, responseBodyConfig, clientConfig);
+        return new ExecuteHandle(spec);
     }
 }

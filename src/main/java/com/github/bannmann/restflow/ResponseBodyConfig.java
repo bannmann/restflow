@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-class RequesterConfig<B, R>
+class ResponseBodyConfig<B, R>
 {
     private final HttpResponse.BodyHandler<B> bodyHandler;
     private final Function<B, R> responseConverter;

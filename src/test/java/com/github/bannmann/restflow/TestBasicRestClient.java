@@ -44,7 +44,7 @@ import net.jodah.failsafe.TimeoutExceededException;
 @Slf4j
 public class TestBasicRestClient extends AbstractNameableTest
 {
-    private interface ReturnSpec<T> extends Function<RequestHandle, ConfigHandle<T>>
+    private interface ReturnSpec<T> extends Function<RequestHandle, FetchHandle<T>>
     {
     }
 
@@ -93,6 +93,7 @@ public class TestBasicRestClient extends AbstractNameableTest
 
         BasicRestClient client = makeClient();
         client.make(TestData.Requests.Outgoing.POST)
+            .returningNothing()
             .execute()
             .get();
 
@@ -106,6 +107,7 @@ public class TestBasicRestClient extends AbstractNameableTest
             .uri(TestData.FAKE_SERVER_URL)
             .build();
         CompletableFuture<Void> responseFuture = makeClient().make(request)
+            .returningNothing()
             .execute();
 
         assertThatThrownBy(responseFuture::get).isExactlyInstanceOf(ExecutionException.class)
@@ -119,9 +121,10 @@ public class TestBasicRestClient extends AbstractNameableTest
     public void testExecuteMissing()
     {
         CompletableFuture<Void> responseFuture = makeClient().make(TestData.Requests.Outgoing.POST_MISSING)
+            .returningNothing()
             .execute();
 
-        assertThrowsInvalidBackendReply(responseFuture, 404, TestData.PATH_MISSING, "");
+        assertThrowsInvalidBackendReply(responseFuture, 404, TestData.Strings.PATH_MISSING, "");
     }
 
     @Test(timeOut = METHOD_TIMEOUT)
@@ -131,7 +134,7 @@ public class TestBasicRestClient extends AbstractNameableTest
             .returningString()
             .fetch();
 
-        assertThrowsInvalidBackendReply(responseFuture, 404, TestData.PATH_MISSING, "");
+        assertThrowsInvalidBackendReply(responseFuture, 404, TestData.Strings.PATH_MISSING, "");
     }
 
     @Test(timeOut = METHOD_TIMEOUT)
@@ -152,6 +155,7 @@ public class TestBasicRestClient extends AbstractNameableTest
             .respond(TestData.Responses.INTERNAL_SERVER_ERROR);
 
         CompletableFuture<Void> responseFuture = makeClient().make(TestData.Requests.Outgoing.POST)
+            .returningNothing()
             .execute();
 
         assertThrowsInternalServerError(responseFuture);
@@ -187,7 +191,7 @@ public class TestBasicRestClient extends AbstractNameableTest
     {
         assertThrowsInvalidBackendReply(responseFuture,
             500,
-            TestData.PATH,
+            TestData.Strings.PATH,
             TestData.Responses.Body.INTERNAL_SERVER_ERROR_BODY);
     }
 
@@ -281,7 +285,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         assertThat(response).contains(expectedResult);
     }
 
-    private <T> ConfigHandle<T> prepareFetchClientServer(
+    private <T> FetchHandle<T> prepareFetchClientServer(
         org.mockserver.model.HttpResponse mockResponse, ReturnSpec<T> returnSpec)
     {
         mockedServer.when(TestData.Requests.Incoming.POST)
@@ -303,6 +307,7 @@ public class TestBasicRestClient extends AbstractNameableTest
             .build();
         BasicRestClient client = makeClient(clientConfig);
         client.make(TestData.Requests.Outgoing.POST)
+            .returningNothing()
             .execute()
             .get();
 
@@ -320,6 +325,7 @@ public class TestBasicRestClient extends AbstractNameableTest
             .build();
         BasicRestClient client = makeClient(clientConfig);
         var future = client.make(TestData.Requests.Outgoing.POST)
+            .returningNothing()
             .execute();
 
         assertThatThrownBy(future::get).hasRootCauseInstanceOf(TimeoutExceededException.class);
@@ -341,6 +347,7 @@ public class TestBasicRestClient extends AbstractNameableTest
             .build();
         BasicRestClient client = makeClient(clientConfig);
         client.make(TestData.Requests.Outgoing.POST)
+            .returningNothing()
             .execute()
             .get();
 
@@ -361,6 +368,7 @@ public class TestBasicRestClient extends AbstractNameableTest
             .build();
         BasicRestClient client = makeClient(clientConfig);
         client.make(TestData.Requests.Outgoing.POST)
+            .returningNothing()
             .execute()
             .get();
 
@@ -378,6 +386,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         BasicRestClient client = makeClient(clientConfig);
 
         var executeFuture = client.make(TestData.Requests.Outgoing.POST)
+            .returningNothing()
             .execute();
         var fetchFuture = client.make(TestData.Requests.Outgoing.POST)
             .returningString()
@@ -388,9 +397,69 @@ public class TestBasicRestClient extends AbstractNameableTest
 
         String expectedMessage = "Got status 418 with message 'Incompatible equipment.' for URL " +
             TestData.BASE_URL +
-            TestData.PATH;
+            TestData.Strings.PATH;
         assertThatThrownBy(executeFuture::get).hasRootCauseMessage(expectedMessage);
         assertThatThrownBy(fetchFuture::get).hasRootCauseMessage(expectedMessage);
         assertThatThrownBy(tryFetchFuture::get).hasRootCauseMessage(expectedMessage);
+    }
+
+    @Test(timeOut = METHOD_TIMEOUT)
+    public void testGlobalRequestCustomizer() throws Exception
+    {
+        mockedServer.when(TestData.Requests.Incoming.POST, once())
+            .respond(TestData.Responses.NO_CONTENT);
+
+        ClientConfig clientConfig = makeClientConfig().toBuilder()
+            .requestCustomizer(authorizationHeaderSetter(TestData.Strings.BASIC_FOOBAR))
+            .requestCustomizer(authorizationHeaderSetter(TestData.Strings.BEARER_IDDQD))
+            .build();
+        BasicRestClient client = makeClient(clientConfig);
+        client.make(TestData.Requests.Outgoing.POST)
+            .returningNothing()
+            .execute()
+            .get();
+
+        mockedServer.verify(TestData.Requests.Incoming.POST_AUTHORIZED);
+    }
+
+    @Test(timeOut = METHOD_TIMEOUT)
+    public void testIndividualRequestCustomizer() throws Exception
+    {
+        mockedServer.when(TestData.Requests.Incoming.POST, once())
+            .respond(TestData.Responses.NO_CONTENT);
+
+        ClientConfig clientConfig = makeClientConfig();
+        BasicRestClient client = makeClient(clientConfig);
+        client.make(TestData.Requests.Outgoing.POST)
+            .returningNothing()
+            .customizingRequest(authorizationHeaderSetter(TestData.Strings.BEARER_IDDQD))
+            .execute()
+            .get();
+
+        mockedServer.verify(TestData.Requests.Incoming.POST_AUTHORIZED);
+    }
+
+    @Test(timeOut = METHOD_TIMEOUT)
+    public void testIndividualRequestCustomizerOverridesGlobal() throws Exception
+    {
+        mockedServer.when(TestData.Requests.Incoming.POST, once())
+            .respond(TestData.Responses.NO_CONTENT);
+
+        ClientConfig clientConfig = makeClientConfig().toBuilder()
+            .requestCustomizer(authorizationHeaderSetter(TestData.Strings.BASIC_FOOBAR))
+            .build();
+        BasicRestClient client = makeClient(clientConfig);
+        client.make(TestData.Requests.Outgoing.POST)
+            .returningNothing()
+            .customizingRequest(authorizationHeaderSetter(TestData.Strings.BEARER_IDDQD))
+            .execute()
+            .get();
+
+        mockedServer.verify(TestData.Requests.Incoming.POST_AUTHORIZED);
+    }
+
+    private RequestCustomizer authorizationHeaderSetter(String value)
+    {
+        return builder -> builder.setHeader(TestData.Strings.AUTHORIZATION, value);
     }
 }

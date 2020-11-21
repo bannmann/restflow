@@ -18,15 +18,10 @@ import com.github.mizool.core.exception.CodeInconsistencyException;
 @UtilityClass
 class TestData
 {
-    public static final int PORT = 1080;
+    public final int PORT = 1080;
 
-    public static final URL BASE_URL = makeUrl("http://localhost:" + PORT);
-
-    public static final String PATH = "/foo";
-
-    public static final URI FAKE_SERVER_URL = makeUri("http://localhost:12345");
-
-    public static final String PATH_MISSING = "/nonexisting";
+    public final URL BASE_URL = makeUrl("http://localhost:" + PORT);
+    public final URI FAKE_SERVER_URL = makeUri("http://localhost:12345");
 
     private static URL makeUrl(String spec)
     {
@@ -53,15 +48,26 @@ class TestData
     }
 
     @UtilityClass
+    public class Strings
+    {
+        public final String PATH = "/foo";
+        public final String PATH_MISSING = "/nonexisting";
+
+        public final String AUTHORIZATION = "Authorization";
+        public final String BEARER_IDDQD = "Bearer IDDQD";
+        public final String BASIC_FOOBAR = "Basic foobar";
+    }
+
+    @UtilityClass
     public class Requests
     {
         @UtilityClass
         public class Outgoing
         {
-            public static final HttpRequest POST = createRequest(PATH).POST(noBody())
+            public final HttpRequest POST = createRequest(Strings.PATH).POST(noBody())
                 .build();
 
-            public static final HttpRequest POST_MISSING = createRequest(PATH_MISSING).POST(noBody())
+            public final HttpRequest POST_MISSING = createRequest(Strings.PATH_MISSING).POST(noBody())
                 .build();
 
             private static URI makeUriFromPath(String path)
@@ -86,7 +92,9 @@ class TestData
         @UtilityClass
         public class Incoming
         {
-            public static final org.mockserver.model.HttpRequest POST = request(PATH).withMethod("POST");
+            public final org.mockserver.model.HttpRequest POST = request(Strings.PATH).withMethod("POST");
+            public final org.mockserver.model.HttpRequest POST_AUTHORIZED = POST.clone()
+                .withHeader(Strings.AUTHORIZATION, Strings.BEARER_IDDQD);
         }
     }
 
@@ -96,28 +104,28 @@ class TestData
         @UtilityClass
         public class Body
         {
-            public static final String HELLO_WORLD_OBJECT = "{\"greeting\":\"Hello, world!\"}";
+            public final String HELLO_WORLD_OBJECT = "{\"greeting\":\"Hello, world!\"}";
 
-            public static final String HELLO_WORLD_JSON_ARRAY = "[" + HELLO_WORLD_OBJECT + "]";
+            public final String HELLO_WORLD_JSON_ARRAY = "[" + HELLO_WORLD_OBJECT + "]";
 
-            public static final String
+            public final String
                 INTERNAL_SERVER_ERROR_BODY
                 = "Detected a slight field variance in the thera-magnetic caesium portal housing.";
         }
 
-        public static final org.mockserver.model.HttpResponse NO_CONTENT = response().withStatusCode(204);
+        public final org.mockserver.model.HttpResponse NO_CONTENT = response().withStatusCode(204);
 
-        public static final org.mockserver.model.HttpResponse HELLO_WORLD_OBJECT = response().withStatusCode(200)
+        public final org.mockserver.model.HttpResponse HELLO_WORLD_OBJECT = response().withStatusCode(200)
             .withBody(Body.HELLO_WORLD_OBJECT);
 
-        public static final org.mockserver.model.HttpResponse HELLO_WORLD_ARRAY = response().withStatusCode(200)
+        public final org.mockserver.model.HttpResponse HELLO_WORLD_ARRAY = response().withStatusCode(200)
             .withBody(Body.HELLO_WORLD_JSON_ARRAY);
 
-        public static final org.mockserver.model.HttpResponse SERVER_BUSY = response().withStatusCode(429)
+        public final org.mockserver.model.HttpResponse SERVER_BUSY = response().withStatusCode(429)
             .withBody("Please try again later")
             .withDelay(TimeUnit.MILLISECONDS, 500);
 
-        public static final org.mockserver.model.HttpResponse INTERNAL_SERVER_ERROR = response().withStatusCode(500)
+        public final org.mockserver.model.HttpResponse INTERNAL_SERVER_ERROR = response().withStatusCode(500)
             .withBody(Body.INTERNAL_SERVER_ERROR_BODY);
     }
 }
