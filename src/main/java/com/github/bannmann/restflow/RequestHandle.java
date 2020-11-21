@@ -6,6 +6,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 
+import javax.json.JsonArray;
+import javax.json.JsonObject;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 
@@ -38,6 +41,16 @@ public final class RequestHandle
     public <T> FetchHandle<List<T>> returningListOf(Class<T> elementClass)
     {
         return returning(Types.listOf(elementClass));
+    }
+
+    public FetchHandle<JsonObject> returningJsonObject()
+    {
+        return returning(JsonObject.class);
+    }
+
+    public FetchHandle<JsonArray> returningJsonArray()
+    {
+        return returning(JsonArray.class);
     }
 
     public FetchHandle<String> returningString()

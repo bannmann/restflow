@@ -21,8 +21,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import javax.json.Json;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
 import javax.json.bind.JsonbBuilder;
 
 import lombok.AllArgsConstructor;
@@ -227,13 +225,13 @@ public class TestBasicRestClient extends AbstractNameableTest
                 "String"),
 
             makeFetchDataParameters(TestData.Responses.HELLO_WORLD_OBJECT,
-                handle -> handle.returning(JsonObject.class),
+                RequestHandle::returningJsonObject,
                 Json.createReader(new StringReader(TestData.Responses.Body.HELLO_WORLD_OBJECT))
                     .readObject(),
                 "JsonObject"),
 
             makeFetchDataParameters(TestData.Responses.HELLO_WORLD_ARRAY,
-                handle -> handle.returning(JsonArray.class),
+                RequestHandle::returningJsonArray,
                 Json.createReader(new StringReader(TestData.Responses.Body.HELLO_WORLD_JSON_ARRAY))
                     .readArray(),
                 "JsonArray"),
