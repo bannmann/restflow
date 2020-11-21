@@ -49,8 +49,8 @@ public class TestBasicRestClient extends AbstractNameableTest
     {
     }
 
-    private static final int METHOD_TIMEOUT = 30 * 1000;
-    private static final Duration REQUEST_TIMEOUT = Duration.ofMillis(200);
+    private static final int METHOD_TIMEOUT = 5 * 1000;
+    private static final Duration REQUEST_TIMEOUT = Duration.ofMillis(100);
 
     private static final Timeout<HttpResponse<?>> TIMEOUT_POLICY = Timeout.of(REQUEST_TIMEOUT);
     private static final RetryPolicy<HttpResponse<?>>
@@ -297,7 +297,7 @@ public class TestBasicRestClient extends AbstractNameableTest
     public void testTimeoutKept() throws Exception
     {
         mockedServer.when(TestData.Requests.Incoming.POST)
-            .respond(TestData.Responses.NO_CONTENT.withDelay(TimeUnit.MILLISECONDS, 100));
+            .respond(TestData.Responses.NO_CONTENT.withDelay(TimeUnit.MILLISECONDS, 50));
 
         ClientConfig clientConfig = makeClientConfig().toBuilder()
             .policy(TIMEOUT_POLICY)

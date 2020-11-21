@@ -115,7 +115,7 @@ class TestData
 
         public static final org.mockserver.model.HttpResponse SERVER_BUSY = response().withStatusCode(429)
             .withBody("Please try again later")
-            .withDelay(TimeUnit.SECONDS, 5);
+            .withDelay(TimeUnit.MILLISECONDS, 500);
 
         public static final org.mockserver.model.HttpResponse INTERNAL_SERVER_ERROR = response().withStatusCode(500)
             .withBody(Body.INTERNAL_SERVER_ERROR_BODY);
