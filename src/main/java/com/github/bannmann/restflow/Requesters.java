@@ -104,7 +104,7 @@ class Requesters
         }
     }
 
-    private static class RegularRequester<B, R> extends AbstractRequester<B, R>
+    private static final class RegularRequester<B, R> extends AbstractRequester<B, R>
     {
         @Getter
         private final HttpResponse.BodyHandler<B> bodyHandler;
@@ -139,7 +139,7 @@ class Requesters
         }
     }
 
-    private static class OptionalRequester<B, R> extends AbstractRequester<B, Optional<R>>
+    private static final class OptionalRequester<B, R> extends AbstractRequester<B, Optional<R>>
     {
         @Getter
         private final HttpResponse.BodyHandler<B> bodyHandler;
