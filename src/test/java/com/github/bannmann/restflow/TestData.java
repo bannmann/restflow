@@ -4,48 +4,20 @@ import static java.net.http.HttpRequest.BodyPublishers.noBody;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
 
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.net.http.HttpRequest;
 import java.util.concurrent.TimeUnit;
 
 import lombok.experimental.UtilityClass;
 
-import com.github.mizool.core.exception.CodeInconsistencyException;
+import com.github.mizool.core.UrlRef;
 
 @UtilityClass
 class TestData
 {
     public final int PORT = 1080;
 
-    public final URL BASE_URL = makeUrl("http://localhost:" + PORT);
-    public final URI FAKE_SERVER_URL = makeUri("http://localhost:12345");
-
-    private static URL makeUrl(String spec)
-    {
-        try
-        {
-            return makeUri(spec).toURL();
-        }
-        catch (MalformedURLException e)
-        {
-            throw new CodeInconsistencyException(e);
-        }
-    }
-
-    private static URI makeUri(String spec)
-    {
-        try
-        {
-            return new URI(spec);
-        }
-        catch (URISyntaxException e)
-        {
-            throw new CodeInconsistencyException(e);
-        }
-    }
+    public final UrlRef BASE_URL = new UrlRef("http://localhost:" + PORT);
+    public final UrlRef FAKE_SERVER_URL = new UrlRef("http://localhost:12345");
 
     @UtilityClass
     public class Strings
@@ -70,22 +42,11 @@ class TestData
             public final HttpRequest POST_MISSING = createRequest(Strings.PATH_MISSING).POST(noBody())
                 .build();
 
-            private static URI makeUriFromPath(String path)
-            {
-                try
-                {
-                    return new URL(BASE_URL, path).toURI();
-                }
-                catch (URISyntaxException | MalformedURLException e)
-                {
-                    throw new CodeInconsistencyException(e);
-                }
-            }
-
             private static HttpRequest.Builder createRequest(String path)
             {
                 return HttpRequest.newBuilder()
-                    .uri(makeUriFromPath(path));
+                    .uri(BASE_URL.resolve(path)
+                        .toUri());
             }
         }
 

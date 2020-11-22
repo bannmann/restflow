@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.github.bannmann</groupId>
         <artifactId>base</artifactId>
-        <version>1.0</version>
+        <version>1.1-SNAPSHOT</version>
     </parent>
 
     <groupId>com.github.bannmann.restflow</groupId>
@@ -13,7 +13,7 @@
     <version>0.3-SNAPSHOT</version>
 
     <name>${project.groupId}:${project.artifactId}</name>
-    <description>Fluent syntax for Java 11 HTTP Client with JSON-B support</description>
+    <description>Fluent API for Java 11 HTTP Client with JSON-B support</description>
     <url>https://github.com/bannmann/restflow</url>
 
     <scm>
@@ -21,6 +21,10 @@
         <tag>HEAD</tag>
         <url>https://github.com/bannmann/restflow</url>
     </scm>
+
+    <properties>
+        <mizool.version>0.42-SNAPSHOT</mizool.version>
+    </properties>
 
     <dependencyManagement>
         <dependencies>

@@ -1,9 +1,5 @@
 package com.github.bannmann.restflow;
 
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.net.http.HttpRequest;
 import java.nio.charset.StandardCharsets;
 
@@ -13,6 +9,8 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+
+import com.github.mizool.core.UrlRef;
 
 public final class StandardRestClient
 {
@@ -41,7 +39,8 @@ public final class StandardRestClient
 
     private final ClientConfig clientConfig;
     private final HttpRequest.Builder requestTemplate;
-    private final URL baseUrl;
+
+    private final UrlRef baseUrl;
 
     /**
      * @throws IllegalStateException if no URI has been set on {@code requestTemplate}
@@ -57,26 +56,19 @@ public final class StandardRestClient
     /**
      * @throws IllegalStateException if no URI has been set on {@code requestTemplate}
      */
-    private URL obtainBaseUrl(HttpRequest.Builder requestTemplate)
+    private UrlRef obtainBaseUrl(HttpRequest.Builder requestTemplate)
     {
-        try
-        {
-            String spec = requestTemplate.build()
-                .uri()
-                .toString();
+        String spec = requestTemplate.build()
+            .uri()
+            .toString();
 
-            if (!spec.endsWith("/"))
-            {
-                // Ensure the last path segment is not overwritten when building URLs based on this base URL
-                spec = spec + "/";
-            }
-
-            return new URL(spec);
-        }
-        catch (MalformedURLException e)
+        if (!spec.endsWith("/"))
         {
-            throw new IllegalArgumentException(e);
+            // Ensure the last path segment is not overwritten when building URLs based on this base URL
+            spec = spec + "/";
         }
+
+        return new UrlRef(spec);
     }
 
     public RequestHandle get(@NonNull String resourcePath)
@@ -97,22 +89,10 @@ public final class StandardRestClient
 
     private HttpRequest.Builder newRequestBuilder(String resourcePath)
     {
-        URI uri = createUri(resourcePath);
+        UrlRef resourceUrl = baseUrl.resolve(resourcePath);
 
         return requestTemplate.copy()
-            .uri(uri);
-    }
-
-    private URI createUri(String resourcePath)
-    {
-        try
-        {
-            return new URL(baseUrl, resourcePath).toURI();
-        }
-        catch (URISyntaxException | MalformedURLException e)
-        {
-            throw new IllegalArgumentException(e);
-        }
+            .uri(resourceUrl.toUri());
     }
 
     public RequestBodyHandle post(@NonNull Object body)

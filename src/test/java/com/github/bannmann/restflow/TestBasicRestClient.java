@@ -102,7 +102,7 @@ public class TestBasicRestClient extends AbstractNameableTest
     public void testExecuteNowhere()
     {
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(TestData.FAKE_SERVER_URL)
+            .uri(TestData.FAKE_SERVER_URL.toUri())
             .build();
         CompletableFuture<Void> responseFuture = makeClient().make(request)
             .returningNothing()
