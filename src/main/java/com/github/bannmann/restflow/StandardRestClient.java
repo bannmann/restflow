@@ -94,6 +94,22 @@ public final class StandardRestClient
             getBodyPublisher(patch.toJsonValue()));
     }
 
+    public RequestBodyHandle patch(@NonNull Object body)
+    {
+        return patch(clientConfig.getJsonb()
+            .toJson(body), APPLICATION_JSON);
+    }
+
+    public RequestBodyHandle patch(@NonNull JsonValue body)
+    {
+        return patch(body.toString(), APPLICATION_JSON);
+    }
+
+    public RequestBodyHandle patch(@NonNull String body, @NonNull String contentType)
+    {
+        return new RequestBodyHandle(clientConfig, requestTemplate, "PATCH", contentType, getBodyPublisher(body));
+    }
+
     private HttpRequest.BodyPublisher getBodyPublisher(@NonNull JsonValue body)
     {
         return getBodyPublisher(body.toString());
