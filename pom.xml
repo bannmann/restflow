@@ -47,12 +47,6 @@
                 <scope>provided</scope>
             </dependency>
             <dependency>
-                <groupId>net.bytebuddy</groupId>
-                <artifactId>byte-buddy</artifactId>
-                <version>1.10.17</version>
-                <scope>compile</scope>
-            </dependency>
-            <dependency>
                 <groupId>net.jodah</groupId>
                 <artifactId>failsafe</artifactId>
                 <version>2.4.0</version>
@@ -96,11 +90,6 @@
         <dependency>
             <groupId>javax.json.bind</groupId>
             <artifactId>javax.json.bind-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>net.bytebuddy</groupId>
-            <artifactId>byte-buddy</artifactId>
-            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>net.jodah</groupId>
