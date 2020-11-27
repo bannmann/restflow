@@ -23,7 +23,7 @@
     </scm>
 
     <properties>
-        <mizool.version>0.42-SNAPSHOT</mizool.version>
+        <mizool.version>0.43</mizool.version>
     </properties>
 
     <dependencyManagement>
