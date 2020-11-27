@@ -5,15 +5,15 @@
     <parent>
         <groupId>com.github.bannmann</groupId>
         <artifactId>base</artifactId>
-        <version>1.0</version>
+        <version>1.1-SNAPSHOT</version>
     </parent>
 
     <groupId>com.github.bannmann.restflow</groupId>
     <artifactId>restflow</artifactId>
-    <version>0.2</version>
+    <version>0.3</version>
 
     <name>${project.groupId}:${project.artifactId}</name>
-    <description>Fluent syntax for Java 11 HTTP Client with JSON-B support</description>
+    <description>Fluent API for Java 11 HTTP Client with JSON-B support</description>
     <url>https://github.com/bannmann/restflow</url>
 
     <scm>
@@ -22,8 +22,18 @@
         <url>https://github.com/bannmann/restflow</url>
     </scm>
 
+    <properties>
+        <mizool.version>0.43</mizool.version>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>1.2.3</version>
+                <scope>test</scope>
+            </dependency>
             <dependency>
                 <groupId>javax.json</groupId>
                 <artifactId>javax.json-api</artifactId>
@@ -37,10 +47,9 @@
                 <scope>provided</scope>
             </dependency>
             <dependency>
-                <groupId>net.bytebuddy</groupId>
-                <artifactId>byte-buddy</artifactId>
-                <version>1.10.17</version>
-                <scope>compile</scope>
+                <groupId>net.jodah</groupId>
+                <artifactId>failsafe</artifactId>
+                <version>2.4.0</version>
             </dependency>
             <dependency>
                 <groupId>org.eclipse</groupId>
@@ -48,10 +57,32 @@
                 <version>1.0.6</version>
                 <scope>runtime</scope>
             </dependency>
+            <dependency>
+                <groupId>org.kohsuke.metainf-services</groupId>
+                <artifactId>metainf-services</artifactId>
+                <version>1.8</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.mock-server</groupId>
+                <artifactId>mockserver-netty</artifactId>
+                <version>5.11.1</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>jul-to-slf4j</artifactId>
+                <version>1.7.30</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
         <dependency>
             <groupId>javax.json</groupId>
             <artifactId>javax.json-api</artifactId>
@@ -61,9 +92,8 @@
             <artifactId>javax.json.bind-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>net.bytebuddy</groupId>
-            <artifactId>byte-buddy</artifactId>
-            <scope>compile</scope>
+            <groupId>net.jodah</groupId>
+            <artifactId>failsafe</artifactId>
         </dependency>
         <dependency>
             <groupId>org.assertj</groupId>
@@ -72,6 +102,18 @@
         <dependency>
             <groupId>org.eclipse</groupId>
             <artifactId>yasson</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.kohsuke.metainf-services</groupId>
+            <artifactId>metainf-services</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.mock-server</groupId>
+            <artifactId>mockserver-netty</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jul-to-slf4j</artifactId>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>

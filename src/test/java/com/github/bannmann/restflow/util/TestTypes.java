@@ -1,9 +1,10 @@
 package com.github.bannmann.restflow.util;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.lang.reflect.Type;
 import java.util.List;
 
-import org.assertj.core.api.Assertions;
 import org.testng.annotations.Test;
 
 public class TestTypes
@@ -16,7 +17,6 @@ public class TestTypes
         Type synthetic = Types.listOf(String.class);
         Type real = getClass().getFields()[0].getGenericType();
 
-        Assertions.assertThat(synthetic)
-            .isEqualTo(real);
+        assertThat(synthetic).isEqualTo(real);
     }
 }

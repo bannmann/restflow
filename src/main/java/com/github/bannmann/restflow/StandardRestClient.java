@@ -1,119 +1,39 @@
 package com.github.bannmann.restflow;
 
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.net.http.HttpRequest;
 import java.nio.charset.StandardCharsets;
 
+import javax.json.JsonMergePatch;
+import javax.json.JsonPatch;
 import javax.json.JsonValue;
 
-import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 
-public final class StandardRestClient extends AbstractRestClient
+public final class StandardRestClient
 {
     private static final String APPLICATION_JSON = "application/json";
+    private static final String APPLICATION_JSON_PATCH_JSON = "application/json-patch+json";
+    private static final String APPLICATION_MERGE_PATCH_JSON = "application/merge-patch+json";
 
-    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-    public final class RequestBodyHandle
-    {
-        private final String method;
-        private final String contentType;
-        private final HttpRequest.BodyPublisher bodyPublisher;
-
-        public RequestHandle to(@NonNull String resourcePath)
-        {
-            HttpRequest request = createUploadRequest(resourcePath);
-            return make(request);
-        }
-
-        private HttpRequest createUploadRequest(String resourcePath)
-        {
-            return newRequestBuilder(resourcePath).header("Content-Type", contentType)
-                .method(method, bodyPublisher)
-                .build();
-        }
-    }
-
-    private final HttpRequest.Builder requestTemplate;
-    private final URL baseUrl;
+    private final ClientConfig clientConfig;
+    private final RequestTemplate requestTemplate;
 
     /**
      * @throws IllegalStateException if no URI has been set on {@code requestTemplate}
      */
     @Builder
-    protected StandardRestClient(@NonNull ClientConfig clientConfig, @NonNull HttpRequest.Builder requestTemplate)
+    private StandardRestClient(@NonNull ClientConfig clientConfig, @NonNull HttpRequest.Builder requestTemplate)
     {
-        super(clientConfig);
-
-        this.requestTemplate = requestTemplate.copy();
-
-        baseUrl = obtainBaseUrl(requestTemplate);
-    }
-
-    /**
-     * @throws IllegalStateException if no URI has been set on {@code requestTemplate}
-     */
-    private URL obtainBaseUrl(HttpRequest.Builder requestTemplate)
-    {
-        try
-        {
-            String spec = requestTemplate.build()
-                .uri()
-                .toString();
-
-            if (!spec.endsWith("/"))
-            {
-                // Ensure the last path segment is not overwritten when building URLs based on this base URL
-                spec = spec + "/";
-            }
-
-            return new URL(spec);
-        }
-        catch (MalformedURLException e)
-        {
-            throw new IllegalArgumentException(e);
-        }
+        this.clientConfig = clientConfig;
+        this.requestTemplate = new RequestTemplate(requestTemplate);
     }
 
     public RequestHandle get(@NonNull String resourcePath)
     {
-        HttpRequest request = createGetRequest(resourcePath);
-        return make(request);
-    }
-
-    private RequestHandle make(HttpRequest request)
-    {
-        return new RequestHandle(request);
-    }
-
-    private HttpRequest createGetRequest(String resourcePath)
-    {
-        return newRequestBuilder(resourcePath).build();
-    }
-
-    private HttpRequest.Builder newRequestBuilder(String resourcePath)
-    {
-        URI uri = createUri(resourcePath);
-
-        return requestTemplate.copy()
-            .uri(uri);
-    }
-
-    private URI createUri(String resourcePath)
-    {
-        try
-        {
-            return new URL(baseUrl, resourcePath).toURI();
-        }
-        catch (URISyntaxException | MalformedURLException e)
-        {
-            throw new IllegalArgumentException(e);
-        }
+        HttpRequest request = requestTemplate.newBuilder(resourcePath)
+            .build();
+        return new RequestHandle(request, clientConfig);
     }
 
     public RequestBodyHandle post(@NonNull Object body)
@@ -129,12 +49,7 @@ public final class StandardRestClient extends AbstractRestClient
 
     public RequestBodyHandle post(@NonNull String body, @NonNull String contentType)
     {
-        return new RequestBodyHandle("POST", contentType, getStringBodyPublisher(body));
-    }
-
-    private HttpRequest.BodyPublisher getStringBodyPublisher(@NonNull String body)
-    {
-        return HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8);
+        return new RequestBodyHandle(clientConfig, requestTemplate, "POST", contentType, getBodyPublisher(body));
     }
 
     public RequestBodyHandle put(@NonNull Object body)
@@ -150,6 +65,58 @@ public final class StandardRestClient extends AbstractRestClient
 
     public RequestBodyHandle put(@NonNull String body, @NonNull String contentType)
     {
-        return new RequestBodyHandle("PUT", contentType, getStringBodyPublisher(body));
+        return new RequestBodyHandle(clientConfig, requestTemplate, "PUT", contentType, getBodyPublisher(body));
+    }
+
+    public RequestHandle delete(@NonNull String resourcePath)
+    {
+        HttpRequest request = requestTemplate.newBuilder(resourcePath)
+            .DELETE()
+            .build();
+        return new RequestHandle(request, clientConfig);
+    }
+
+    public RequestBodyHandle patch(@NonNull JsonPatch patch)
+    {
+        return new RequestBodyHandle(clientConfig,
+            requestTemplate,
+            "PATCH",
+            APPLICATION_JSON_PATCH_JSON,
+            getBodyPublisher(patch.toJsonArray()));
+    }
+
+    public RequestBodyHandle patch(@NonNull JsonMergePatch patch)
+    {
+        return new RequestBodyHandle(clientConfig,
+            requestTemplate,
+            "PATCH",
+            APPLICATION_MERGE_PATCH_JSON,
+            getBodyPublisher(patch.toJsonValue()));
+    }
+
+    public RequestBodyHandle patch(@NonNull Object body)
+    {
+        return patch(clientConfig.getJsonb()
+            .toJson(body), APPLICATION_JSON);
+    }
+
+    public RequestBodyHandle patch(@NonNull JsonValue body)
+    {
+        return patch(body.toString(), APPLICATION_JSON);
+    }
+
+    public RequestBodyHandle patch(@NonNull String body, @NonNull String contentType)
+    {
+        return new RequestBodyHandle(clientConfig, requestTemplate, "PATCH", contentType, getBodyPublisher(body));
+    }
+
+    private HttpRequest.BodyPublisher getBodyPublisher(@NonNull JsonValue body)
+    {
+        return getBodyPublisher(body.toString());
+    }
+
+    private HttpRequest.BodyPublisher getBodyPublisher(@NonNull String body)
+    {
+        return HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8);
     }
 }
