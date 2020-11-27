@@ -79,6 +79,9 @@ class TestData
         public final org.mockserver.model.HttpResponse HELLO_WORLD_OBJECT = response().withStatusCode(200)
             .withBody(Body.HELLO_WORLD_OBJECT);
 
+        public final org.mockserver.model.HttpResponse DELAYED_HELLO_WORLD_OBJECT = HELLO_WORLD_OBJECT.clone()
+            .withDelay(TimeUnit.MILLISECONDS, 750);
+
         public final org.mockserver.model.HttpResponse HELLO_WORLD_ARRAY = response().withStatusCode(200)
             .withBody(Body.HELLO_WORLD_JSON_ARRAY);
 

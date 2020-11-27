@@ -298,15 +298,16 @@ public class TestBasicRestClient extends AbstractNameableTest
     public void testTimeoutKept() throws Exception
     {
         mockedServer.when(TestData.Requests.Incoming.POST)
-            .respond(TestData.Responses.NO_CONTENT.withDelay(TimeUnit.MILLISECONDS, 50));
+            .respond(TestData.Responses.HELLO_WORLD_OBJECT.clone()
+                .withDelay(TimeUnit.MILLISECONDS, 50));
 
         ClientConfig clientConfig = makeClientConfig().toBuilder()
             .policy(TIMEOUT_POLICY)
             .build();
         BasicRestClient client = makeClient(clientConfig);
         client.make(TestData.Requests.Outgoing.POST)
-            .returningNothing()
-            .execute()
+            .returning(Greeting.class)
+            .fetch()
             .get();
 
         mockedServer.verify(TestData.Requests.Incoming.POST);
@@ -323,8 +324,8 @@ public class TestBasicRestClient extends AbstractNameableTest
             .build();
         BasicRestClient client = makeClient(clientConfig);
         var future = client.make(TestData.Requests.Outgoing.POST)
-            .returningNothing()
-            .execute();
+            .returning(Greeting.class)
+            .fetch();
 
         assertThatThrownBy(future::get).hasRootCauseInstanceOf(TimeoutExceededException.class);
 
@@ -337,7 +338,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         mockedServer.when(TestData.Requests.Incoming.POST, once())
             .respond(TestData.Responses.SERVER_BUSY);
         mockedServer.when(TestData.Requests.Incoming.POST, once())
-            .respond(TestData.Responses.NO_CONTENT);
+            .respond(TestData.Responses.HELLO_WORLD_OBJECT);
 
         ClientConfig clientConfig = makeClientConfig().toBuilder()
             .policy(RETRY_ONCE_POLICY)
@@ -345,8 +346,8 @@ public class TestBasicRestClient extends AbstractNameableTest
             .build();
         BasicRestClient client = makeClient(clientConfig);
         client.make(TestData.Requests.Outgoing.POST)
-            .returningNothing()
-            .execute()
+            .returning(Greeting.class)
+            .fetch()
             .get();
 
         mockedServer.verify(TestData.Requests.Incoming.POST, exactly(2));
@@ -359,15 +360,15 @@ public class TestBasicRestClient extends AbstractNameableTest
             .respond(TestData.Responses.INTERNAL_SERVER_ERROR);
 
         mockedServer.when(TestData.Requests.Incoming.POST, once())
-            .respond(TestData.Responses.NO_CONTENT);
+            .respond(TestData.Responses.HELLO_WORLD_OBJECT);
 
         ClientConfig clientConfig = makeClientConfig().toBuilder()
             .policy(RETRY_ONCE_POLICY)
             .build();
         BasicRestClient client = makeClient(clientConfig);
         client.make(TestData.Requests.Outgoing.POST)
-            .returningNothing()
-            .execute()
+            .returning(Greeting.class)
+            .fetch()
             .get();
 
         mockedServer.verify(TestData.Requests.Incoming.POST, exactly(2));
