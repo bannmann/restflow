@@ -46,7 +46,7 @@ public class TestBasicRestClient extends AbstractNameableTest
     {
     }
 
-    private static final int METHOD_TIMEOUT = 5 * 1000;
+    private static final int METHOD_TIMEOUT = 1 * 1000;
     private static final Duration REQUEST_TIMEOUT = Duration.ofMillis(100);
 
     private static final Timeout<HttpResponse<?>> TIMEOUT_POLICY = Timeout.of(REQUEST_TIMEOUT);
