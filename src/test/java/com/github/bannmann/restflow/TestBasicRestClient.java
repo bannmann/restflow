@@ -13,12 +13,15 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 
 import javax.json.Json;
 import javax.json.bind.JsonbBuilder;
@@ -31,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.mockserver.integration.ClientAndServer;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -42,14 +46,18 @@ import net.jodah.failsafe.TimeoutExceededException;
 @Slf4j
 public class TestBasicRestClient extends AbstractNameableTest
 {
+
     private interface ReturnSpec<T> extends Function<RequestHandle, FetchHandle<T>>
     {
+
     }
 
-    private static final int METHOD_TIMEOUT = 5 * 1000;
-    private static final Duration REQUEST_TIMEOUT = Duration.ofMillis(100);
+    private static final int REQUEST_TIMEOUT_MILLIS = 200;
+    private static final int METHOD_TIMEOUT_MILLIS = (int) (2.5 * REQUEST_TIMEOUT_MILLIS);
+    private static final Timeout<HttpResponse<?>>
+        TIMEOUT_POLICY
+        = Timeout.of(Duration.ofMillis(REQUEST_TIMEOUT_MILLIS));
 
-    private static final Timeout<HttpResponse<?>> TIMEOUT_POLICY = Timeout.of(REQUEST_TIMEOUT);
     private static final RetryPolicy<HttpResponse<?>>
         RETRY_ONCE_POLICY
         = new RetryPolicy<HttpResponse<?>>().withMaxRetries(1);
@@ -77,13 +85,22 @@ public class TestBasicRestClient extends AbstractNameableTest
 
     private final ClientAndServer mockedServer = new ClientAndServer(TestData.PORT);
 
+    //@BeforeSuite
+    public void warmUp() throws Exception
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            testExecute();
+        }
+    }
+
     @BeforeMethod
     public void setUp()
     {
         mockedServer.reset();
     }
 
-    @Test(timeOut = METHOD_TIMEOUT)
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS)
     public void testExecute() throws Exception
     {
         mockedServer.when(TestData.Requests.Incoming.POST)
@@ -98,7 +115,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         mockedServer.verify(TestData.Requests.Incoming.POST);
     }
 
-    @Test(timeOut = METHOD_TIMEOUT)
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS)
     public void testExecuteNowhere()
     {
         HttpRequest request = HttpRequest.newBuilder()
@@ -115,7 +132,7 @@ public class TestBasicRestClient extends AbstractNameableTest
             .hasRootCauseExactlyInstanceOf(ConnectException.class);
     }
 
-    @Test(timeOut = METHOD_TIMEOUT)
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS)
     public void testExecuteMissing()
     {
         CompletableFuture<Void> responseFuture = makeClient().make(TestData.Requests.Outgoing.POST_MISSING)
@@ -125,7 +142,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         assertThrowsInvalidBackendReply(responseFuture, 404, TestData.Strings.PATH_MISSING, "");
     }
 
-    @Test(timeOut = METHOD_TIMEOUT)
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS)
     public void testFetchMissing()
     {
         CompletableFuture<String> responseFuture = makeClient().make(TestData.Requests.Outgoing.POST_MISSING)
@@ -135,7 +152,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         assertThrowsInvalidBackendReply(responseFuture, 404, TestData.Strings.PATH_MISSING, "");
     }
 
-    @Test(timeOut = METHOD_TIMEOUT)
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS)
     public void testTryFetchMissing() throws Exception
     {
         Optional<String> fakeRequestResponse = makeClient().make(TestData.Requests.Outgoing.POST_MISSING)
@@ -146,7 +163,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         assertThat(fakeRequestResponse).isEmpty();
     }
 
-    @Test(timeOut = METHOD_TIMEOUT)
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS)
     public void testExecuteServerError()
     {
         mockedServer.when(TestData.Requests.Incoming.POST)
@@ -159,7 +176,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         assertThrowsInternalServerError(responseFuture);
     }
 
-    @Test(timeOut = METHOD_TIMEOUT)
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS)
     public void testFetchServerError()
     {
         mockedServer.when(TestData.Requests.Incoming.POST)
@@ -172,7 +189,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         assertThrowsInternalServerError(responseFuture);
     }
 
-    @Test(timeOut = METHOD_TIMEOUT)
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS)
     public void testTryFetchServerError()
     {
         mockedServer.when(TestData.Requests.Incoming.POST)
@@ -257,7 +274,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         return new Object[]{ mockResponse, returnSpec, expectedResult, remark };
     }
 
-    @Test(timeOut = METHOD_TIMEOUT, dataProvider = "getFetchTypeData")
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS, dataProvider = "getFetchTypeData")
     public <T> void testFetch(
         org.mockserver.model.HttpResponse mockResponse,
         ReturnSpec<T> returnSpec,
@@ -270,7 +287,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         assertThat(response).isEqualTo(expectedResult);
     }
 
-    @Test(timeOut = METHOD_TIMEOUT, dataProvider = "getFetchTypeData")
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS, dataProvider = "getFetchTypeData")
     public <T> void testTryFetch(
         org.mockserver.model.HttpResponse mockResponse,
         ReturnSpec<T> returnSpec,
@@ -294,12 +311,12 @@ public class TestBasicRestClient extends AbstractNameableTest
         return returnSpec.apply(requestHandle);
     }
 
-    @Test(timeOut = METHOD_TIMEOUT)
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS)
     public void testTimeoutKept() throws Exception
     {
         mockedServer.when(TestData.Requests.Incoming.POST)
             .respond(TestData.Responses.HELLO_WORLD_OBJECT.clone()
-                .withDelay(TimeUnit.MILLISECONDS, 50));
+                .withDelay(TimeUnit.MILLISECONDS, 100));
 
         ClientConfig clientConfig = makeClientConfig().toBuilder()
             .policy(TIMEOUT_POLICY)
@@ -313,7 +330,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         mockedServer.verify(TestData.Requests.Incoming.POST);
     }
 
-    @Test(timeOut = METHOD_TIMEOUT)
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS)
     public void testTimeoutExceeded()
     {
         mockedServer.when(TestData.Requests.Incoming.POST)
@@ -332,7 +349,31 @@ public class TestBasicRestClient extends AbstractNameableTest
         mockedServer.verify(TestData.Requests.Incoming.POST);
     }
 
-    @Test(timeOut = METHOD_TIMEOUT)
+    @Test(dataProvider = "intermittentTimeouts", timeOut = METHOD_TIMEOUT_MILLIS)
+    public void testIntermittentTimeouts(int number, boolean busy) throws Exception
+    {
+        if (busy)
+        {
+            testTimeoutExceeded();
+        }
+        else
+        {
+            testTimeoutKept();
+        }
+    }
+
+    @DataProvider
+    public static Iterator<Object[]> intermittentTimeouts()
+    {
+        final int numberOfRuns = 100;
+
+        Random random = new Random();
+        return IntStream.range(0, numberOfRuns)
+            .mapToObj(value -> new Object[]{ value, random.nextInt(101) > 90 })
+            .iterator();
+    }
+
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS)
     public void testRetryOnTimeout() throws Exception
     {
         mockedServer.when(TestData.Requests.Incoming.POST, once())
@@ -353,7 +394,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         mockedServer.verify(TestData.Requests.Incoming.POST, exactly(2));
     }
 
-    @Test(timeOut = METHOD_TIMEOUT)
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS)
     public void testRetryOnError() throws Exception
     {
         mockedServer.when(TestData.Requests.Incoming.POST, once())
@@ -374,7 +415,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         mockedServer.verify(TestData.Requests.Incoming.POST, exactly(2));
     }
 
-    @Test(timeOut = METHOD_TIMEOUT)
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS)
     public void testExceptionDetails()
     {
         mockedServer.when(TestData.Requests.Incoming.POST)
@@ -402,7 +443,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         assertThatThrownBy(tryFetchFuture::get).hasRootCauseMessage(expectedMessage);
     }
 
-    @Test(timeOut = METHOD_TIMEOUT)
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS)
     public void testGlobalRequestCustomizer() throws Exception
     {
         mockedServer.when(TestData.Requests.Incoming.POST, once())
@@ -421,7 +462,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         mockedServer.verify(TestData.Requests.Incoming.POST_AUTHORIZED);
     }
 
-    @Test(timeOut = METHOD_TIMEOUT)
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS)
     public void testIndividualRequestCustomizer() throws Exception
     {
         mockedServer.when(TestData.Requests.Incoming.POST, once())
@@ -438,7 +479,7 @@ public class TestBasicRestClient extends AbstractNameableTest
         mockedServer.verify(TestData.Requests.Incoming.POST_AUTHORIZED);
     }
 
-    @Test(timeOut = METHOD_TIMEOUT)
+    @Test(timeOut = METHOD_TIMEOUT_MILLIS)
     public void testIndividualRequestCustomizerOverridesGlobal() throws Exception
     {
         mockedServer.when(TestData.Requests.Incoming.POST, once())

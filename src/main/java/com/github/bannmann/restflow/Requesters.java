@@ -1,10 +1,14 @@
 package com.github.bannmann.restflow;
 
+import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 import lombok.Getter;
@@ -14,16 +18,34 @@ import lombok.extern.slf4j.Slf4j;
 
 import com.github.mizool.core.exception.InvalidBackendReplyException;
 import com.github.mizool.core.rest.errorhandling.HttpStatus;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.Policy;
+import com.google.common.annotations.VisibleForTesting;
 
 @Slf4j
 @UtilityClass
 class Requesters
 {
+    @VisibleForTesting
+    public static class SpecialTimeoutException extends RuntimeException
+    {
+        public SpecialTimeoutException(URI uri)
+        {
+            super("OMG teh request timed out! url was " + uri);
+        }
+    }
+    
     @RequiredArgsConstructor
     private abstract static class AbstractRequester<B, R> implements Requester<R>
     {
+        private static final AtomicInteger threadCount = new AtomicInteger();
+        private static final ScheduledExecutorService EXECUTOR_SERVICE = Executors.newScheduledThreadPool(10,
+            runnable -> {
+                String name = "restflow-" + threadCount.incrementAndGet();
+                log.debug("Creating thread {}", name);
+
+                Thread result = new Thread(runnable, name);
+                result.setDaemon(true);
+                return result;
+            });
         protected final HttpRequest request;
         protected final ClientConfig clientConfig;
 
@@ -35,18 +57,33 @@ class Requesters
 
         private CompletableFuture<HttpResponse<B>> send()
         {
+            /*
             List<Policy<HttpResponse<?>>> policies = clientConfig.getPolicies();
             if (!policies.isEmpty())
             {
+                log.debug("Failsafe policies: {}", policies);
                 return Failsafe.with(policies)
+                    .with(EXECUTOR_SERVICE)
                     .getStageAsync(context -> sendOnce());
-            }
+            }*/
 
-            return sendOnce();
+            return sendOnceButAddTimeout();
+        }
+
+        @SuppressWarnings({ "unchecked", "rawtypes" })
+        private CompletableFuture<HttpResponse<B>> sendOnceButAddTimeout()
+        {
+            CompletableFuture<HttpResponse<B>> future = sendOnce();
+            CompletableFuture timeoutFuture = new CompletableFuture();
+            EXECUTOR_SERVICE.schedule(() -> timeoutFuture.completeExceptionally(new SpecialTimeoutException(request.uri())),
+                2_500,
+                TimeUnit.MILLISECONDS);
+            return (CompletableFuture) CompletableFuture.anyOf(future, timeoutFuture);
         }
 
         private CompletableFuture<HttpResponse<B>> sendOnce()
         {
+            log.debug("sendOnce: {}", request.uri());
             return clientConfig.getHttpClient()
                 .sendAsync(request, getBodyHandler())
                 .handle(this::addDetailsForLowLevelExceptions)
