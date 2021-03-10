@@ -1,6 +1,7 @@
 package com.github.bannmann.restflow;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.net.URI;
@@ -51,32 +52,8 @@ public class TestFailsafeTimeoutingWithLiveUrls extends AbstractNameableTest
     @Test(dataProvider = "liveUrls", timeOut = METHOD_TIMEOUT_MILLIS)
     public void testLiveUrl(String uriString) throws Exception
     {
-        testUrl(uriString, Timeout.of(Duration.ofMillis(REQUEST_TIMEOUT_MILLIS)));
-    }
-
-    /**
-     * 500 TimeoutExceededException (Failsafe)
-     * 750 Max random delay
-     * 2500 SpecialTimeoutException (Custom)
-     * 3000 TestNG timeout
-     */
-    @Test(dataProvider = "randomlyDelayedUrls750", timeOut = METHOD_TIMEOUT_MILLIS)
-    public void testRandomlyDelayedUrl(int runNumber, String uriString) throws Exception
-    {
-        testUrl(uriString, Timeout.of(Duration.ofMillis(500)));
-    }
-
-    private void testUrl(String uriString, Timeout<Object> timeoutPolicy) throws InterruptedException
-    {
-        Class<?> expectedTimeoutException;
-        expectedTimeoutException = Requesters.SpecialTimeoutException.class;
-        expectedTimeoutException = TimeoutExceededException.class;
-
         URI uri = URI.create(uriString);
-        CompletableFuture<String> originalFuture = makeRequest(uri);
-
-        CompletableFuture<String> timeoutingFuture = Failsafe.with(timeoutPolicy)
-            .getStageAsync(() -> originalFuture);
+        CompletableFuture<String> timeoutingFuture = launch(Timeout.of(Duration.ofMillis(REQUEST_TIMEOUT_MILLIS)), uri);
         try
         {
             timeoutingFuture.get();
@@ -84,9 +61,32 @@ public class TestFailsafeTimeoutingWithLiveUrls extends AbstractNameableTest
         catch (ExecutionException e)
         {
             assertThat(e).getRootCause()
-                .isInstanceOf(expectedTimeoutException);
+                .isInstanceOf(TimeoutExceededException.class);
             log.info("Timeout occurred for URL {}", uri);
         }
+    }
+
+    /**
+     * 300-500 random delay
+     * 500 TimeoutExceededException (Failsafe)
+     * 2500 SpecialTimeoutException (Custom)
+     * 3000 TestNG timeout
+     */
+    @Test(dataProvider = "urlsDelayedRandomlyBy350To500", timeOut = METHOD_TIMEOUT_MILLIS)
+    public void testRandomlyDelayedUrl(int runNumber, String uriString) throws Exception
+    {
+        URI uri = URI.create(uriString);
+        CompletableFuture<String> timeoutingFuture = launch(Timeout.of(Duration.ofMillis(500)), uri);
+        assertThatThrownBy(timeoutingFuture::get).getRootCause().isInstanceOf(TimeoutExceededException.class);
+    }
+
+    private CompletableFuture<String> launch(Timeout<Object> timeoutPolicy, URI uri)
+    {
+        CompletableFuture<String> originalFuture = makeRequest(uri);
+
+        CompletableFuture<String> timeoutingFuture = Failsafe.with(timeoutPolicy)
+            .getStageAsync(() -> originalFuture);
+        return timeoutingFuture;
     }
 
     private CompletableFuture<String> makeRequest(URI uri)
@@ -132,9 +132,10 @@ public class TestFailsafeTimeoutingWithLiveUrls extends AbstractNameableTest
     }
 
     @DataProvider
-    public static Iterator<Object[]> randomlyDelayedUrls750() throws IOException
+    public static Iterator<Object[]> urlsDelayedRandomlyBy350To500() throws IOException
     {
-        int bound = 750;
+        int lowerBound = 350;
+        int upperBound = 500;
 
         Random random = new Random();
         return IntStream.range(0, NUMBER_OF_RUNS)
@@ -142,7 +143,7 @@ public class TestFailsafeTimeoutingWithLiveUrls extends AbstractNameableTest
                 runNumber,
                 String.format(
                     "http://slowwly.robertomurray.co.uk/delay/%d/url/https://jsonplaceholder.typicode.com/posts/%d",
-                    random.nextInt(bound),
+                    lowerBound + random.nextInt(upperBound - lowerBound),
                     runNumber % 100 + 1)
             })
             .iterator();
