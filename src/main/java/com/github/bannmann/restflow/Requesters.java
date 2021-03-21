@@ -66,6 +66,7 @@ class Requesters
 
         private HttpResponse<B> failOrPassThrough(HttpResponse<B> response)
         {
+            log.debug("Completed request to {}", request.uri());
             verifyNoErrors(response);
             return response;
         }

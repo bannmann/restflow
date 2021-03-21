@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.github.bannmann</groupId>
         <artifactId>base</artifactId>
-        <version>1.2-SNAPSHOT</version>
+        <version>1.3</version>
     </parent>
 
     <groupId>com.github.bannmann.restflow</groupId>
