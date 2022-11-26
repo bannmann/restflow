@@ -30,7 +30,9 @@ class Requesters
         @Override
         public final CompletableFuture<R> start()
         {
-            return send().thenApply(this::extractValue);
+            log.debug("Start {}", request.uri());
+            return send().whenComplete((bHttpResponse, throwable) -> log.debug("End   {}", request.uri()))
+                .thenApply(this::extractValue);
         }
 
         private CompletableFuture<HttpResponse<B>> send()
@@ -39,6 +41,18 @@ class Requesters
             if (!policies.isEmpty())
             {
                 return Failsafe.with(policies)
+                    .onComplete(event -> {
+/*
+                        if (event.getResult() != null)
+                        {
+                            log.info("onComplete: got result {}", event.getResult());
+                        }
+                        else if (event.getFailure() != null)
+                        {
+                            log.error("onComplete: got failure", event.getFailure());
+                        }
+*/
+                    })
                     .getStageAsync(context -> sendOnce());
             }
 
@@ -50,7 +64,8 @@ class Requesters
             return clientConfig.getHttpClient()
                 .sendAsync(request, getBodyHandler())
                 .handle(this::addDetailsForLowLevelExceptions)
-                .thenApply(this::failOrPassThrough);
+                .thenApply(this::failOrPassThrough)
+                .whenComplete(this::logBeforeFailsafe);
         }
 
         protected abstract HttpResponse.BodyHandler<B> getBodyHandler();
@@ -66,9 +81,19 @@ class Requesters
 
         private HttpResponse<B> failOrPassThrough(HttpResponse<B> response)
         {
-            log.debug("Completed request to {}", request.uri());
+            //log.debug("Completed request to {}", request.uri());
             verifyNoErrors(response);
             return response;
+        }
+
+        private void logBeforeFailsafe(HttpResponse<B> bHttpResponse, Throwable throwable)
+        {
+/*
+            log.debug("SendOnce - request to {} completed; hasResponse={}, hasThrowable={}",
+                request.uri(),
+                bHttpResponse != null,
+                throwable != null);
+*/
         }
 
         protected abstract void verifyNoErrors(HttpResponse<B> response);
