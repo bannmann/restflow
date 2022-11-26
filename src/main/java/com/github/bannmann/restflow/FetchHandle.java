@@ -15,6 +15,14 @@ public final class FetchHandle<R>
         return new FetchHandle<>(requestSpecification.withCustomizer(requestCustomizer));
     }
 
+    /**
+     * TODO offer choice of
+     *  - CompletableFuture<String> make(request).asynchronously().returningString().fetch()
+     *  - String make(request).synchronously().returningString().fetch()
+     *  and
+     *  - CompletableFuture<String> post(dto).asynchronously().to("/foo").returningString().fetch()
+     *  - String post(dto).synchronously().to("/foo").returningString().fetch()
+     */
     public CompletableFuture<R> fetch()
     {
         return Requesters.createRegular(requestSpecification)
