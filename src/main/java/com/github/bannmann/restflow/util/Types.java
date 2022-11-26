@@ -69,6 +69,11 @@ public class Types
         }
     }
 
+    /**
+     * TODO Also expose a flexible version `of(@NonNull Type rawType, @NonNull Type... arguments)` so that one can
+     *  construct nested generics for RequestHandle.returning(Optional.class, Types.of(Identifier.class, MyPojo.class)).
+     *  Needs verification.
+     */
     public ParameterizedType listOf(@NonNull Class<?> elementClass)
     {
         return new ParameterizedTypeImpl(List.class, elementClass);

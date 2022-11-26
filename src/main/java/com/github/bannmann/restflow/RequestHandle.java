@@ -29,6 +29,10 @@ public final class RequestHandle
         return new FetchHandle<>(spec);
     }
 
+    /**
+     * TODO also offer returning(Type rawType, @NonNull Type... arguments). For example, ChronoLink could use
+     *  `returning(ValueDto.class, String.class)` instead of its dummy StringValueDto class.
+     */
     public <T> FetchHandle<T> returning(Type runtimeType)
     {
         var responseBodyConfig = new ResponseBodyConfig<String, T>(HttpResponse.BodyHandlers.ofString(),
