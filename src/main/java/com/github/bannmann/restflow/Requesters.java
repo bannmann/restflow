@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
-import com.github.mizool.core.exception.InvalidBackendReplyException;
 import com.github.mizool.core.rest.errorhandling.HttpStatus;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.Policy;
@@ -59,7 +58,8 @@ class Requesters
         {
             if (throwable != null)
             {
-                throw new RequestFailureException(String.format("Request to URL %s failed", request.uri()), throwable);
+                String message = String.format("Request to URL %s failed", request.uri());
+                throw new RequestFailureException(request, message, throwable);
             }
             return result;
         }
@@ -84,12 +84,23 @@ class Requesters
             return responseStatus >= 200 && responseStatus < 300;
         }
 
-        protected <T> InvalidBackendReplyException createException(HttpResponse<T> response)
+        protected <T> RequestStatusException createException(HttpResponse<T> response)
         {
-            return new InvalidBackendReplyException(String.format("Got status %d with message '%s' for URL %s",
-                response.statusCode(),
-                getStringBody(response),
-                request.uri()));
+            int status = response.statusCode();
+            String body = getStringBody(response);
+            String message = String.format("Got status %d with message '%s' for %s %s",
+                status,
+                body,
+                request.method(),
+                request.uri());
+
+            return RequestStatusException.builder()
+                .message(message)
+                .request(request)
+                .response(response)
+                .status(status)
+                .body(body)
+                .build();
         }
 
         private <T> String getStringBody(HttpResponse<T> response)
