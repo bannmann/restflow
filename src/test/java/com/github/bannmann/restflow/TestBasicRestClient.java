@@ -34,7 +34,6 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.github.mizool.core.exception.InvalidBackendReplyException;
 import net.jodah.failsafe.RetryPolicy;
 import net.jodah.failsafe.Timeout;
 import net.jodah.failsafe.TimeoutExceededException;
@@ -122,7 +121,7 @@ public class TestBasicRestClient extends AbstractNameableTest
             .returningNothing()
             .execute();
 
-        assertThrowsInvalidBackendReply(responseFuture, 404, TestData.Strings.PATH_MISSING, "");
+        assertThrowsRequestStatusException(responseFuture, 404, TestData.Strings.PATH_MISSING, "", "POST");
     }
 
     @Test(timeOut = METHOD_TIMEOUT)
@@ -132,7 +131,7 @@ public class TestBasicRestClient extends AbstractNameableTest
             .returningString()
             .fetch();
 
-        assertThrowsInvalidBackendReply(responseFuture, 404, TestData.Strings.PATH_MISSING, "");
+        assertThrowsRequestStatusException(responseFuture, 404, TestData.Strings.PATH_MISSING, "", "POST");
     }
 
     @Test(timeOut = METHOD_TIMEOUT)
@@ -156,7 +155,7 @@ public class TestBasicRestClient extends AbstractNameableTest
             .returningNothing()
             .execute();
 
-        assertThrowsInternalServerError(responseFuture);
+        assertThrowsInternalServerError(responseFuture, "POST");
     }
 
     @Test(timeOut = METHOD_TIMEOUT)
@@ -169,7 +168,7 @@ public class TestBasicRestClient extends AbstractNameableTest
             .returningString()
             .fetch();
 
-        assertThrowsInternalServerError(responseFuture);
+        assertThrowsInternalServerError(responseFuture, "POST");
     }
 
     @Test(timeOut = METHOD_TIMEOUT)
@@ -182,26 +181,30 @@ public class TestBasicRestClient extends AbstractNameableTest
             .returningString()
             .tryFetch();
 
-        assertThrowsInternalServerError(responseFuture);
+        assertThrowsInternalServerError(responseFuture, "POST");
     }
 
-    private void assertThrowsInternalServerError(CompletableFuture<?> responseFuture)
+    private void assertThrowsInternalServerError(CompletableFuture<?> responseFuture, String method)
     {
-        assertThrowsInvalidBackendReply(responseFuture,
+        assertThrowsRequestStatusException(responseFuture,
             500,
             TestData.Strings.PATH,
-            TestData.Responses.Body.INTERNAL_SERVER_ERROR_BODY);
+            TestData.Responses.Body.INTERNAL_SERVER_ERROR_BODY,
+            method);
     }
 
-    private void assertThrowsInvalidBackendReply(
-        CompletableFuture<?> responseFuture, int status, String path, String message)
+    private void assertThrowsRequestStatusException(
+        CompletableFuture<?> responseFuture, int status, String path, String body, String method)
     {
-        InvalidBackendReplyException expectedCause = new InvalidBackendReplyException(String.format(
-            "Got status %d with message '%s' for URL %s%s",
+        String message = String.format("Got status %d with message '%s' for %s %s%s",
             status,
-            message,
+            body,
+            method,
             TestData.BASE_URL,
-            path));
+            path);
+        RequestStatusException expectedCause = RequestStatusException.builder()
+            .message(message)
+            .build();
 
         assertThatThrownBy(responseFuture::get).isExactlyInstanceOf(ExecutionException.class)
             .hasCause(expectedCause);
@@ -394,7 +397,7 @@ public class TestBasicRestClient extends AbstractNameableTest
             .returningString()
             .tryFetch();
 
-        String expectedMessage = "Got status 418 with message 'Incompatible equipment.' for URL " +
+        String expectedMessage = "Got status 418 with message 'Incompatible equipment.' for POST " +
             TestData.BASE_URL +
             TestData.Strings.PATH;
         assertThatThrownBy(executeFuture::get).hasRootCauseMessage(expectedMessage);
