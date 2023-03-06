@@ -26,6 +26,8 @@ class Requesters
         protected final HttpRequest request;
         protected final ClientConfig clientConfig;
 
+        protected HttpResponse.ResponseInfo responseInfo;
+
         @Override
         public final CompletableFuture<R> start()
         {
@@ -47,9 +49,17 @@ class Requesters
         private CompletableFuture<HttpResponse<B>> sendOnce()
         {
             return clientConfig.getHttpClient()
-                .sendAsync(request, getBodyHandler())
+                .sendAsync(request, getWrappedBodyHandler())
                 .handle(this::addDetailsForLowLevelExceptions)
                 .thenApply(this::failOrPassThrough);
+        }
+
+        protected HttpResponse.BodyHandler<B> getWrappedBodyHandler()
+        {
+            return responseInfo -> {
+                AbstractRequester.this.responseInfo = responseInfo;
+                return getBodyHandler().apply(responseInfo);
+            };
         }
 
         protected abstract HttpResponse.BodyHandler<B> getBodyHandler();
@@ -59,7 +69,7 @@ class Requesters
             if (throwable != null)
             {
                 String message = String.format("Request to URL %s failed", request.uri());
-                throw new RequestFailureException(request, message, throwable);
+                throw new RequestFailureException(request, responseInfo, message, throwable);
             }
             return result;
         }
