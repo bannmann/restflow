@@ -34,9 +34,9 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import net.jodah.failsafe.RetryPolicy;
-import net.jodah.failsafe.Timeout;
-import net.jodah.failsafe.TimeoutExceededException;
+import dev.failsafe.RetryPolicy;
+import dev.failsafe.Timeout;
+import dev.failsafe.TimeoutExceededException;
 
 @Slf4j
 public class TestBasicRestClient extends AbstractNameableTest
@@ -50,8 +50,9 @@ public class TestBasicRestClient extends AbstractNameableTest
 
     private static final Timeout<HttpResponse<?>> TIMEOUT_POLICY = Timeout.of(REQUEST_TIMEOUT);
     private static final RetryPolicy<HttpResponse<?>>
-        RETRY_ONCE_POLICY
-        = new RetryPolicy<HttpResponse<?>>().withMaxRetries(1);
+        RETRY_ONCE_POLICY = RetryPolicy.<HttpResponse<?>>builder()
+        .withMaxRetries(1)
+        .build();
 
     private BasicRestClient makeClient()
     {

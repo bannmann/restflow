@@ -13,8 +13,8 @@ import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
 import com.github.mizool.core.rest.errorhandling.HttpStatus;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.Policy;
+import dev.failsafe.Failsafe;
+import dev.failsafe.Policy;
 
 @Slf4j
 @UtilityClass
