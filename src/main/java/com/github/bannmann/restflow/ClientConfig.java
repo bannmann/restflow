@@ -13,7 +13,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Singular;
 
-import net.jodah.failsafe.Policy;
+import dev.failsafe.Policy;
 
 @Getter
 @Builder(toBuilder = true)
