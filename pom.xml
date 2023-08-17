@@ -23,6 +23,7 @@
     </scm>
 
     <properties>
+        <lombok.core.version>1.18.28</lombok.core.version>
         <mizool.version>0.43</mizool.version>
     </properties>
 
