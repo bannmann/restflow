@@ -25,7 +25,7 @@ public final class RequestHandle
         var responseBodyConfig = new ResponseBodyConfig<>(HttpResponse.BodyHandlers.ofString(),
             s -> clientConfig.getJsonb()
                 .fromJson(s, responseClass));
-        var spec = new RequestSpecification<String, T>(request, responseBodyConfig, clientConfig);
+        var spec = new RequestSpecification<>(request, responseBodyConfig, clientConfig);
         return new FetchHandle<>(spec);
     }
 
@@ -34,7 +34,7 @@ public final class RequestHandle
         var responseBodyConfig = new ResponseBodyConfig<String, T>(HttpResponse.BodyHandlers.ofString(),
             s -> clientConfig.getJsonb()
                 .fromJson(s, runtimeType));
-        var spec = new RequestSpecification<String, T>(request, responseBodyConfig, clientConfig);
+        var spec = new RequestSpecification<>(request, responseBodyConfig, clientConfig);
         return new FetchHandle<>(spec);
     }
 
@@ -56,7 +56,7 @@ public final class RequestHandle
     public FetchHandle<String> returningString()
     {
         var responseBodyConfig = new ResponseBodyConfig<>(HttpResponse.BodyHandlers.ofString(), string -> string);
-        var spec = new RequestSpecification<String, String>(request, responseBodyConfig, clientConfig);
+        var spec = new RequestSpecification<>(request, responseBodyConfig, clientConfig);
         return new FetchHandle<>(spec);
     }
 
@@ -64,7 +64,7 @@ public final class RequestHandle
     {
         var responseBodyConfig = new ResponseBodyConfig<>(HttpResponse.BodyHandlers.ofInputStream(),
             inputStream -> inputStream);
-        var spec = new RequestSpecification<InputStream, InputStream>(request, responseBodyConfig, clientConfig);
+        var spec = new RequestSpecification<>(request, responseBodyConfig, clientConfig);
         return new FetchHandle<>(spec);
     }
 
@@ -72,7 +72,7 @@ public final class RequestHandle
     {
         // Note: we use ofString() handler because discarding() would also discard the body of an error response.
         var responseBodyConfig = new ResponseBodyConfig<String, Void>(HttpResponse.BodyHandlers.ofString(), v -> null);
-        var spec = new RequestSpecification<String, Void>(request, responseBodyConfig, clientConfig);
+        var spec = new RequestSpecification<>(request, responseBodyConfig, clientConfig);
         return new ExecuteHandle(spec);
     }
 }

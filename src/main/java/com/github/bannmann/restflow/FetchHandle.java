@@ -17,13 +17,13 @@ public final class FetchHandle<R>
 
     public CompletableFuture<R> fetch()
     {
-        return Requesters.createRegular(requestSpecification)
+        return RegularRequester.forSpec(requestSpecification)
             .start();
     }
 
     public CompletableFuture<Optional<R>> tryFetch()
     {
-        return Requesters.createOptional(requestSpecification)
+        return OptionalRequester.forSpec(requestSpecification)
             .start();
     }
 }

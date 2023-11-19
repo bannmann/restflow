@@ -1,6 +1,7 @@
 package com.github.bannmann.restflow;
 
 import java.net.http.HttpRequest;
+import java.util.Map;
 
 /**
  * Thrown when the request failed without a response.
@@ -9,8 +10,9 @@ import java.net.http.HttpRequest;
  */
 public class RequestFailureException extends RequestException
 {
-    public RequestFailureException(HttpRequest request, String message, Throwable cause)
+    public RequestFailureException(
+        HttpRequest request, String message, Throwable cause, Map<String, Object> diagnosticsData)
     {
-        super(request, message, cause);
+        super(request, message, cause, diagnosticsData);
     }
 }
