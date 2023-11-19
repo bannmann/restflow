@@ -10,7 +10,7 @@
 
     <groupId>com.github.bannmann.restflow</groupId>
     <artifactId>restflow</artifactId>
-    <version>0.7</version>
+    <version>0.8</version>
 
     <name>${project.groupId}:${project.artifactId}</name>
     <description>Fluent API for Java 11 HTTP Client with JSON-B support</description>
@@ -135,6 +135,11 @@
                             <productionBranch>main</productionBranch>
                         </gitFlowConfig>
                     </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.sonatype.plugins</groupId>
+                    <artifactId>nexus-staging-maven-plugin</artifactId>
+                    <version>1.6.13</version>
                 </plugin>
             </plugins>
         </pluginManagement>
