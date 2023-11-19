@@ -2,6 +2,7 @@ package com.github.bannmann.restflow;
 
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Map;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -20,9 +21,15 @@ public class RequestStatusException extends RequestException
 
     @Builder
     public RequestStatusException(
-        String message, Throwable cause, HttpRequest request, HttpResponse<?> response, int status, String body)
+        String message,
+        Throwable cause,
+        HttpRequest request,
+        HttpResponse<?> response,
+        int status,
+        String body,
+        Map<String, Object> diagnosticsData)
     {
-        super(request, message, cause);
+        super(request, message, cause, diagnosticsData);
 
         this.response = response;
         this.status = status;

@@ -16,7 +16,7 @@ public final class ExecuteHandle
 
     public CompletableFuture<Void> execute()
     {
-        return Requesters.createRegular(requestSpecification)
+        return RegularRequester.forSpec(requestSpecification)
             .start();
     }
 }

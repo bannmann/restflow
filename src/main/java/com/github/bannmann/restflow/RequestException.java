@@ -1,6 +1,7 @@
 package com.github.bannmann.restflow;
 
 import java.net.http.HttpRequest;
+import java.util.Map;
 
 import lombok.Getter;
 
@@ -12,10 +13,13 @@ import lombok.Getter;
 public abstract class RequestException extends RuntimeException
 {
     private final transient HttpRequest request;
+    private final transient Map<String, Object> diagnosticsData;
 
-    protected RequestException(HttpRequest request, String message, Throwable cause)
+    protected RequestException(
+        HttpRequest request, String message, Throwable cause, Map<String, Object> diagnosticsData)
     {
         super(message, cause);
         this.request = request;
+        this.diagnosticsData = diagnosticsData;
     }
 }

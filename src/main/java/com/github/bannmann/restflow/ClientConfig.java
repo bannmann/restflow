@@ -3,6 +3,8 @@ package com.github.bannmann.restflow;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
 
 import javax.json.bind.Jsonb;
 
@@ -20,6 +22,8 @@ import dev.failsafe.Policy;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ClientConfig
 {
+    private final Supplier<Map<String, Object>> diagnosticsDataSupplier;
+
     private final @NonNull HttpClient httpClient;
 
     @Singular
