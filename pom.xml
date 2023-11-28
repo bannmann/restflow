@@ -10,7 +10,7 @@
 
     <groupId>dev.bannmann.restflow</groupId>
     <artifactId>restflow</artifactId>
-    <version>0.10</version>
+    <version>0.11-SNAPSHOT</version>
 
     <name>${project.groupId}:${project.artifactId}</name>
     <description>Fluent API for Java 11 HTTP Client with JSON-B support</description>
