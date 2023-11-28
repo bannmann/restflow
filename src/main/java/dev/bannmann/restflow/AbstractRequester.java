@@ -2,14 +2,17 @@ package dev.bannmann.restflow;
 
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Stream;
 
 import lombok.RequiredArgsConstructor;
 
+import com.google.common.collect.ImmutableList;
 import dev.failsafe.Failsafe;
 import dev.failsafe.Policy;
 
@@ -19,6 +22,8 @@ abstract class AbstractRequester<B, R> implements Requester<R>
     protected final HttpRequest request;
     protected final ClientConfig clientConfig;
     protected final ConcurrentMap<String, Object> diagnosticsData = new ConcurrentHashMap<>();
+
+    private ImmutableList<StackWalker.StackFrame> callerFrames;
 
     @Override
     public final CompletableFuture<R> start()
@@ -30,7 +35,22 @@ abstract class AbstractRequester<B, R> implements Requester<R>
             diagnosticsData.putAll(values);
         }
 
+        int callerFrameCount = clientConfig.getCallerFrameCount();
+        if (callerFrameCount > 0)
+        {
+            var stackWalker = StackWalker.getInstance(Collections.emptySet(), callerFrameCount);
+            callerFrames = stackWalker.walk(stream -> captureCallerFrames(callerFrameCount, stream));
+        }
+
         return send().thenApply(this::extractValue);
+    }
+
+    private ImmutableList<StackWalker.StackFrame> captureCallerFrames(int count, Stream<StackWalker.StackFrame> stream)
+    {
+        return stream.dropWhile(stackFrame -> stackFrame.getClassName()
+                .startsWith(getClass().getPackageName()))
+            .limit(count)
+            .collect(ImmutableList.toImmutableList());
     }
 
     private CompletableFuture<HttpResponse<B>> send()
@@ -60,7 +80,7 @@ abstract class AbstractRequester<B, R> implements Requester<R>
         if (throwable != null)
         {
             String message = String.format("Request to URL %s failed", request.uri());
-            throw new RequestFailureException(request, message, throwable, diagnosticsData);
+            throw new RequestFailureException(request, message, throwable, diagnosticsData, callerFrames);
         }
         return result;
     }

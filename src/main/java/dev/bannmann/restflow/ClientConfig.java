@@ -33,4 +33,14 @@ public final class ClientConfig
 
     @Singular
     private final List<RequestCustomizer> requestCustomizers;
+
+    /**
+     * The number of caller stack frames to capture when starting a request. The captured frames will be included in
+     * any {@link RequestException} (or subclass) instance thrown by restflow. This is useful if the application is
+     * supposed to log intermediate exceptions, which will otherwise not carry any stack information relating to the
+     * original thread (due to neither being thrown there nor being set as the cause of an exception thrown in that
+     * thread).
+     */
+    @Builder.Default
+    private final int callerFrameCount = 5;
 }
