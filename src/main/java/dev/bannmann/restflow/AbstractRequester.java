@@ -93,7 +93,23 @@ abstract class AbstractRequester<B, R> implements Requester<R>
 
     protected abstract void verifyNoErrors(HttpResponse<B> response);
 
-    protected abstract R extractValue(HttpResponse<B> response);
+    private R extractValue(HttpResponse<B> httpResponse)
+    {
+        try
+        {
+            return doExtractValue(httpResponse);
+        }
+        catch (RuntimeException e)
+        {
+            String message = String.format("Could not process response to %s %s:\n%s",
+                request.method(),
+                request.uri(),
+                httpResponse.body());
+            throw new ResponseBodyException(message, e, httpResponse, diagnosticsData, callerFrames);
+        }
+    }
+
+    protected abstract R doExtractValue(HttpResponse<B> response);
 
     protected boolean isFailure(int responseStatus)
     {
@@ -105,7 +121,7 @@ abstract class AbstractRequester<B, R> implements Requester<R>
         return responseStatus >= 200 && responseStatus < 300;
     }
 
-    protected <T> RequestStatusException createException(HttpResponse<T> response)
+    protected <T> ResponseStatusException createException(HttpResponse<T> response)
     {
         int status = response.statusCode();
         String body = getStringBody(response);
@@ -115,12 +131,9 @@ abstract class AbstractRequester<B, R> implements Requester<R>
             request.method(),
             request.uri());
 
-        return RequestStatusException.builder()
+        return ResponseStatusException.builder()
             .message(message)
-            .request(request)
             .response(response)
-            .status(status)
-            .body(body)
             .diagnosticsData(diagnosticsData)
             .build();
     }

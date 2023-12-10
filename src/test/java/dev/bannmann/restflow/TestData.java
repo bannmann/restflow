@@ -72,6 +72,10 @@ class TestData
             public final String
                 INTERNAL_SERVER_ERROR_BODY
                 = "Detected a slight field variance in the thera-magnetic caesium portal housing.";
+
+            public final String
+                HTML_UNEXPECTED_ERROR
+                = "<html><body>Sorry, an unexpected error occurred. Please try again later.</body></html>";
         }
 
         public final org.mockserver.model.HttpResponse NO_CONTENT = response().withStatusCode(204);
@@ -84,6 +88,10 @@ class TestData
 
         public final org.mockserver.model.HttpResponse HELLO_WORLD_ARRAY = response().withStatusCode(200)
             .withBody(Body.HELLO_WORLD_JSON_ARRAY);
+
+        public final org.mockserver.model.HttpResponse HTML_ERROR_PAGE_WITH_SUCCESS_STATUS = response().withStatusCode(
+                200)
+            .withBody(Body.HTML_UNEXPECTED_ERROR);
 
         public final org.mockserver.model.HttpResponse SERVER_BUSY = response().withStatusCode(429)
             .withBody("Please try again later")

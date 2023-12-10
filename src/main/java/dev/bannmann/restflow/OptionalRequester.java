@@ -38,7 +38,7 @@ final class OptionalRequester<B, R> extends AbstractRequester<B, Optional<R>>
     }
 
     @Override
-    protected Optional<R> extractValue(HttpResponse<B> response)
+    protected Optional<R> doExtractValue(HttpResponse<B> response)
     {
         if (response.statusCode() == HttpStatus.NOT_FOUND)
         {
