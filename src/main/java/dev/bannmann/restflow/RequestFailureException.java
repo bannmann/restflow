@@ -4,13 +4,16 @@ import java.net.http.HttpRequest;
 import java.util.List;
 import java.util.Map;
 
+import lombok.Getter;
+
 /**
  * Thrown when the request failed without a response.
- *
- * @see RequestStatusException
  */
+@Getter
 public class RequestFailureException extends RequestException
 {
+    private final HttpRequest request;
+
     public RequestFailureException(
         HttpRequest request,
         String message,
@@ -18,6 +21,7 @@ public class RequestFailureException extends RequestException
         Map<String, Object> diagnosticsData,
         List<StackWalker.StackFrame> callerFrames)
     {
-        super(request, message, cause, diagnosticsData, callerFrames);
+        super(message, cause, diagnosticsData, callerFrames);
+        this.request = request;
     }
 }

@@ -35,7 +35,7 @@ final class RegularRequester<B, R> extends AbstractRequester<B, R>
     }
 
     @Override
-    protected R extractValue(HttpResponse<B> response)
+    protected R doExtractValue(HttpResponse<B> response)
     {
         return spec.getResponseBodyConfig()
             .getResponseConverter()

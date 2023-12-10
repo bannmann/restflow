@@ -21,7 +21,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import javax.json.Json;
+import javax.json.JsonObject;
 import javax.json.bind.JsonbBuilder;
+import javax.json.stream.JsonParsingException;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -185,6 +187,22 @@ public class TestBasicRestClient extends AbstractNameableTest
         assertThrowsInternalServerError(responseFuture, "POST");
     }
 
+    @Test(timeOut = METHOD_TIMEOUT)
+    public void testExecuteWithMalformedJsonResponse()
+    {
+        mockedServer.when(TestData.Requests.Incoming.POST)
+            .respond(TestData.Responses.HTML_ERROR_PAGE_WITH_SUCCESS_STATUS);
+
+        CompletableFuture<Optional<JsonObject>> responseFuture = makeClient().make(TestData.Requests.Outgoing.POST)
+            .returningJsonObject()
+            .tryFetch();
+
+        assertThatThrownBy(responseFuture::get).isExactlyInstanceOf(ExecutionException.class)
+            .extracting(Throwable::getCause, as(InstanceOfAssertFactories.THROWABLE))
+            .isExactlyInstanceOf(ResponseBodyException.class)
+            .hasRootCauseExactlyInstanceOf(JsonParsingException.class);
+    }
+
     private void assertThrowsInternalServerError(CompletableFuture<?> responseFuture, String method)
     {
         assertThrowsRequestStatusException(responseFuture,
@@ -197,13 +215,13 @@ public class TestBasicRestClient extends AbstractNameableTest
     private void assertThrowsRequestStatusException(
         CompletableFuture<?> responseFuture, int status, String path, String body, String method)
     {
-        String message = String.format("Got status %d with message '%s' for %s %s%s",
+        var message = String.format("Got status %d with message '%s' for %s %s%s",
             status,
             body,
             method,
             TestData.BASE_URL,
             path);
-        RequestStatusException expectedCause = RequestStatusException.builder()
+        var expectedCause = ResponseStatusException.builder()
             .message(message)
             .build();
 
