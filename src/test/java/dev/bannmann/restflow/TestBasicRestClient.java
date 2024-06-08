@@ -215,7 +215,7 @@ public class TestBasicRestClient extends AbstractNameableTest
     private void assertThrowsRequestStatusException(
         CompletableFuture<?> responseFuture, int status, String path, String body, String method)
     {
-        var message = String.format("Got status %d with message '%s' for %s %s%s",
+        var message = String.format("Got status %d with message »%s« for %s %s%s",
             status,
             body,
             method,
@@ -416,7 +416,7 @@ public class TestBasicRestClient extends AbstractNameableTest
             .returningString()
             .tryFetch();
 
-        String expectedMessage = "Got status 418 with message 'Incompatible equipment.' for POST " +
+        String expectedMessage = "Got status 418 with message »Incompatible equipment.« for POST " +
             TestData.BASE_URL +
             TestData.Strings.PATH;
         assertThatThrownBy(executeFuture::get).hasRootCauseMessage(expectedMessage);

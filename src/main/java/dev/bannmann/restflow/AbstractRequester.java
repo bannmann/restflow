@@ -1,7 +1,10 @@
 package dev.bannmann.restflow;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -11,12 +14,15 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.io.ByteStreams;
 import dev.failsafe.Failsafe;
 import dev.failsafe.Policy;
 
 @RequiredArgsConstructor
+@Slf4j
 abstract class AbstractRequester<B, R> implements Requester<R>
 {
     protected final HttpRequest request;
@@ -124,8 +130,8 @@ abstract class AbstractRequester<B, R> implements Requester<R>
     protected <T> ResponseStatusException createException(HttpResponse<T> response)
     {
         int status = response.statusCode();
-        String body = getStringBody(response);
-        String message = String.format("Got status %d with message '%s' for %s %s",
+        String body = getQuotedStringBody(response);
+        String message = String.format("Got status %d with message %s for %s %s",
             status,
             body,
             request.method(),
@@ -138,14 +144,30 @@ abstract class AbstractRequester<B, R> implements Requester<R>
             .build();
     }
 
-    private <T> String getStringBody(HttpResponse<T> response)
+    private <T> String getQuotedStringBody(HttpResponse<T> response)
     {
         T body = response.body();
-        if (body != null)
+        if (body == null)
         {
-            return body.toString()
-                .trim();
+            return null;
         }
-        return null;
+
+        if (body instanceof InputStream)
+        {
+            try
+            {
+                byte[] bytes = ByteStreams.toByteArray((InputStream) body);
+                return new String(bytes, StandardCharsets.UTF_8);
+            }
+            catch (IOException e)
+            {
+                log.debug("Could not read body stream for error message; returning fallback value", e);
+                return "<unreadable stream>";
+            }
+        }
+
+        return String.format("»%s«",
+            body.toString()
+                .trim());
     }
 }
