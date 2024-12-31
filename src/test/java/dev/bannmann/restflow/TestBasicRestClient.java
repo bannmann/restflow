@@ -8,10 +8,10 @@ import static org.mockserver.model.HttpResponse.response;
 import static org.mockserver.verify.VerificationTimes.exactly;
 
 import java.io.StringReader;
-import java.net.ConnectException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.channels.ClosedChannelException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -114,7 +114,7 @@ public class TestBasicRestClient extends AbstractNameableTest
             .extracting(Throwable::getCause, as(InstanceOfAssertFactories.THROWABLE))
             .isExactlyInstanceOf(RequestFailureException.class)
             .hasMessageContaining(TestData.FAKE_SERVER_URL.toString())
-            .hasRootCauseExactlyInstanceOf(ConnectException.class);
+            .hasRootCauseExactlyInstanceOf(ClosedChannelException.class);
     }
 
     @Test(timeOut = METHOD_TIMEOUT)
