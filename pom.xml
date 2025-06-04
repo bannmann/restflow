@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.bannmann</groupId>
         <artifactId>base</artifactId>
-        <version>1.9</version>
+        <version>1.13</version>
     </parent>
 
     <groupId>dev.bannmann.restflow</groupId>
@@ -23,6 +23,7 @@
     </scm>
 
     <properties>
+        <base.central.deploymentName>restflow ${project.version}</base.central.deploymentName>
         <base.toolchains.jdk>17</base.toolchains.jdk>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
@@ -159,10 +160,6 @@
                                 <phase>validate</phase>
                             </execution>
                         </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
                     </plugin>
                 </plugins>
             </build>
