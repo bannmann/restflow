@@ -5,15 +5,15 @@
     <parent>
         <groupId>dev.bannmann</groupId>
         <artifactId>base</artifactId>
-        <version>1.5</version>
+        <version>1.13</version>
     </parent>
 
     <groupId>dev.bannmann.restflow</groupId>
     <artifactId>restflow</artifactId>
-    <version>0.11</version>
+    <version>0.12</version>
 
     <name>${project.groupId}:${project.artifactId}</name>
-    <description>Fluent API for Java 11 HTTP Client with JSON-B support</description>
+    <description>Fluent API for java.net.http which adds JSON-B support</description>
     <url>https://github.com/bannmann/restflow</url>
 
     <scm>
@@ -23,7 +23,10 @@
     </scm>
 
     <properties>
-        <lombok.core.version>1.18.28</lombok.core.version>
+        <base.central.deploymentName>restflow ${project.version}</base.central.deploymentName>
+        <base.toolchains.jdk>17</base.toolchains.jdk>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <mizool.version>0.43</mizool.version>
     </properties>
 
@@ -32,8 +35,13 @@
             <dependency>
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
-                <version>1.2.3</version>
+                <version>1.5.15</version>
                 <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>33.4.0-jre</version>
             </dependency>
             <dependency>
                 <groupId>dev.failsafe</groupId>
@@ -53,27 +61,27 @@
                 <scope>provided</scope>
             </dependency>
             <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>3.27.0</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
                 <groupId>org.eclipse</groupId>
                 <artifactId>yasson</artifactId>
-                <version>1.0.6</version>
+                <version>1.0.11</version>
                 <scope>runtime</scope>
             </dependency>
             <dependency>
                 <groupId>org.kohsuke.metainf-services</groupId>
                 <artifactId>metainf-services</artifactId>
-                <version>1.8</version>
+                <version>1.11</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>org.mock-server</groupId>
                 <artifactId>mockserver-netty</artifactId>
-                <version>5.11.1</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>jul-to-slf4j</artifactId>
-                <version>1.7.30</version>
+                <version>5.15.0</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>
@@ -115,6 +123,7 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>jul-to-slf4j</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -151,10 +160,6 @@
                                 <phase>validate</phase>
                             </execution>
                         </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
                     </plugin>
                 </plugins>
             </build>
